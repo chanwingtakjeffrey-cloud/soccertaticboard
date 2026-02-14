@@ -1,12 +1,13 @@
-const CACHE_NAME = 'soccer-tactic-board-v4'; // Updated version
+const CACHE_NAME = 'soccer-tactic-board-v6-local-icons'; // 更新版本號以強制更新
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './script.js',
   './manifest.json',
-  // Removed specific icon files from cache list to prevent 404 if not present
-  // Cache external CDN resources to allow offline usage
+  './icon-192.png', // 必須確保資料夾中有此檔案
+  './icon-512.png', // 必須確保資料夾中有此檔案
+  // 外部 CDN 資源快取
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
@@ -17,7 +18,7 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js'
 ];
 
-// Install Service Worker
+// 安裝 Service Worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -27,21 +28,25 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Intercept network requests (Cache First Strategy)
+// 攔截網路請求 (Cache First 策略)
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
-      // Return cache if available
+      // 如果快取中有，就直接回傳快取
       if (response) {
         return response;
       }
-      // Otherwise fetch from network
-      return fetch(event.request);
+      // 否則發送網路請求，並加上錯誤處理
+      return fetch(event.request).catch(error => {
+          console.error('Fetching failed:', event.request.url, error);
+          // 在此處可以回傳一個離線頁面，目前先拋出錯誤
+          throw error;
+      });
     })
   );
 });
 
-// Clean up old caches when Service Worker activates
+// 更新 Service Worker 時清除舊快取
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
