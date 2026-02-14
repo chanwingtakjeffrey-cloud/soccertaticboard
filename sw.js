@@ -1,11 +1,11 @@
-const CACHE_NAME = 'soccer-tactic-board-v1';
+const CACHE_NAME = 'soccer-tactic-board-v2'; // Updated version
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './script.js',
   './manifest.json',
-  // 快取外部 CDN 資源 (讓離線時也能載入庫)
+  // Cache external CDN resources to allow offline usage
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
@@ -16,7 +16,7 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js'
 ];
 
-// 安裝 Service Worker
+// Install Service Worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -26,21 +26,21 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 攔截網路請求 (Cache First 策略)
+// Intercept network requests (Cache First Strategy)
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
-      // 如果快取中有，就直接回傳快取
+      // Return cache if available
       if (response) {
         return response;
       }
-      // 否則發送網路請求
+      // Otherwise fetch from network
       return fetch(event.request);
     })
   );
 });
 
-// 更新 Service Worker 時清除舊快取
+// Clean up old caches when Service Worker activates
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
