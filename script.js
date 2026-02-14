@@ -51,7 +51,7 @@ const translations = {
         'download-pdf': 'Download PDF',
         'install-app': 'Install App',
         'init-loading': 'Initializing...',
-        'version': 'v2.5 • 3D Tactical Board',
+        'version': 'v2.7 • 3D Tactical Board',
         'player-name-default': 'Name',
         'confirm-reset': 'Are you sure you want to reset all positions?',
         'set-start-alert': 'Start position set! Now move players to "End" position and click Play.'
@@ -75,7 +75,7 @@ const translations = {
         'download-pdf': '下載 PDF',
         'install-app': '安裝 App',
         'init-loading': '初始化戰術板...',
-        'version': 'v2.5 • 3D Tactical Board',
+        'version': 'v2.7 • 3D Tactical Board',
         'player-name-default': '名字',
         'confirm-reset': '確定要重置所有位置嗎？',
         'set-start-alert': '起點已設定！現在請將球員移動到「終點」位置，然後點擊播放。'
@@ -130,8 +130,6 @@ const FIELD_HEIGHT = 68;
 const PLAYER_RADIUS = 2.5; 
 
 // Formations
-// Coordinates updated: All Team A players have negative X, Team B have positive X.
-// CBs (-40) are deeper than FBs (-30).
 const formations = {
     '4-3-3': {
         teamA: [ {n:1, x:-50, z:0}, {n:2, x:-30, z:-20}, {n:3, x:-30, z:20}, {n:4, x:-40, z:-10}, {n:5, x:-40, z:10}, {n:6, x:-20, z:0}, {n:8, x:-10, z:-15}, {n:10, x:-10, z:15}, {n:7, x:-5, z:-20}, {n:11, x:-5, z:20}, {n:9, x:-1, z:0} ],
@@ -249,7 +247,6 @@ function init() {
 
 function createFieldTexture(type) {
     const canvas = document.createElement('canvas');
-    // Adjust canvas aspect ratio based on type
     const isHalf = type === 'half';
     canvas.width = isHalf ? 512 : 1024;
     canvas.height = 664; 
@@ -263,7 +260,7 @@ function createFieldTexture(type) {
     ctx.fillStyle = '#4CAF50';
     ctx.fillRect(0, 0, w, h);
 
-    // Pattern (Grass stripes)
+    // Pattern
     ctx.fillStyle = 'rgba(0,0,0,0.04)';
     const stripeCount = isHalf ? 6 : 12;
     const stripeW = w / stripeCount;
@@ -280,47 +277,36 @@ function createFieldTexture(type) {
     ctx.strokeRect(lw/2, lw/2, w-lw, h-lw);
 
     if (!isHalf) {
-        // Full Field Center Line
         ctx.beginPath();
         ctx.moveTo(w/2, 0);
         ctx.lineTo(w/2, h);
         ctx.stroke();
 
-        // Center Circle
         ctx.beginPath();
         ctx.arc(w/2, h/2, h * 0.15, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Center Dot
         ctx.fillStyle = '#FFFFFF';
         ctx.beginPath();
         ctx.arc(w/2, h/2, lw, 0, Math.PI * 2);
         ctx.fill();
     } else {
-        // Half Field Center Line (Right side border)
-        // It's already drawn by the border strokeRect
-        
-        // Center Circle Arc (on the Right)
         ctx.beginPath();
-        ctx.arc(w, h/2, h * 0.15, 0.5 * Math.PI, 1.5 * Math.PI); // Draw left half of circle
+        ctx.arc(w, h/2, h * 0.15, 0.5 * Math.PI, 1.5 * Math.PI);
         ctx.stroke();
     }
 
-    // Penalty Areas (Always Left)
+    // Penalty Areas
     const penaltyH = h * 0.6;
-    const penaltyW = isHalf ? w * 0.32 : w * 0.16; // 0.16 of full width = 16.8m approx. 
+    const penaltyW = isHalf ? w * 0.32 : w * 0.16; 
     const penaltyY = (h - penaltyH) / 2;
     ctx.strokeRect(0, penaltyY, penaltyW, penaltyH);
     
     if (!isHalf) {
-        // Right Penalty Area
         ctx.strokeRect(w - penaltyW, penaltyY, penaltyW, penaltyH);
     }
 
-    // --- Penalty Arcs (鵝眉月) & Spots ---
-    // Scale factor (pixels per meter approximation)
-    // Full width 1024px = 105m -> scaleX = 9.75
-    // Half width 512px = 52.5m -> scaleX = 9.75
+    // Penalty Arcs & Spots
     const realWidth = isHalf ? 52.5 : 105;
     const scaleX = w / realWidth; 
     
@@ -328,40 +314,32 @@ function createFieldTexture(type) {
     const penaltyRadius = 9.15 * scaleX;
     const penaltyBoxWidth = penaltyW; 
     
-    // Calculate intersection angle
     const arcAngle = Math.acos((penaltyBoxWidth - penaltySpotDist) / penaltyRadius);
 
-    // Left Arc
     ctx.beginPath();
     ctx.arc(penaltySpotDist, h / 2, penaltyRadius, -arcAngle, arcAngle);
     ctx.stroke();
 
     if (!isHalf) {
-        // Right Arc
         ctx.beginPath();
         ctx.arc(w - penaltySpotDist, h / 2, penaltyRadius, Math.PI - arcAngle, Math.PI + arcAngle);
         ctx.stroke();
     }
 
-    // Penalty Spots
     const spotSize = lw * 1.5;
-    
-    // Left Spot
     ctx.beginPath();
     ctx.arc(penaltySpotDist, h / 2, spotSize, 0, Math.PI * 2);
     ctx.fill();
 
     if (!isHalf) {
-        // Right Spot
         ctx.beginPath();
         ctx.arc(w - penaltySpotDist, h / 2, spotSize, 0, Math.PI * 2);
         ctx.fill();
     }
-    // ------------------------------------
 
     // Goal Areas
     const goalH = h * 0.25;
-    const goalW = isHalf ? w * 0.1 : w * 0.05; // 5.5m approx
+    const goalW = isHalf ? w * 0.1 : w * 0.05; 
     const goalY = (h - goalH) / 2;
     ctx.strokeRect(0, goalY, goalW, goalH);
     
@@ -393,8 +371,6 @@ function createField(type) {
     fieldPlane.receiveShadow = true;
     fieldPlane.name = 'field';
     
-    // If half, position it to the left side (-26.25), otherwise center (0)
-    // Left half of full field goes from -52.5 to 0. Center is -26.25.
     if (isHalf) {
         fieldPlane.position.set(-FIELD_WIDTH/4, 0, 0);
     } else {
@@ -404,29 +380,27 @@ function createField(type) {
     scene.add(fieldPlane);
 }
 
-// --- Goal Posts (龍門架) ---
+// --- Goal Posts ---
 function createGoals() {
-    // Clear existing goals
     while(goalsGroup.children.length > 0){ 
         goalsGroup.remove(goalsGroup.children[0]); 
     }
 
     const goalWidth = 7.32;
     const goalHeight = 2.44;
-    const goalDepth = 2.0; // Depth of the goal box
+    const goalDepth = 2.0; 
     const postRadius = 0.1;
     const material = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.5 });
 
-    // --- Net Texture Generation ---
     const canvas = document.createElement('canvas');
     canvas.width = 64;
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(255, 255, 255, 0)'; // Transparent background
+    ctx.fillStyle = 'rgba(255, 255, 255, 0)'; 
     ctx.fillRect(0,0,64,64);
-    ctx.strokeStyle = 'rgba(220, 220, 220, 0.6)'; // Light grey net color
+    ctx.strokeStyle = 'rgba(220, 220, 220, 0.6)'; 
     ctx.lineWidth = 3;
-    ctx.strokeRect(0,0,64,64); // Draw grid cell
+    ctx.strokeRect(0,0,64,64); 
     
     const netTexture = new THREE.CanvasTexture(canvas);
     netTexture.wrapS = THREE.RepeatWrapping;
@@ -436,26 +410,23 @@ function createGoals() {
         map: netTexture, 
         side: THREE.DoubleSide, 
         transparent: true,
-        depthWrite: false // Prevents transparency sorting artifacts
+        depthWrite: false 
     });
 
     function buildGoal(isLeft) {
         const goal = new THREE.Group();
         
-        // 1. Posts (Vertical)
         const postGeo = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 16);
         const post1 = new THREE.Mesh(postGeo, material);
         post1.position.set(0, goalHeight / 2, -goalWidth / 2);
         const post2 = new THREE.Mesh(postGeo, material);
         post2.position.set(0, goalHeight / 2, goalWidth / 2);
         
-        // 2. Crossbar (Horizontal Top)
         const barGeo = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth + postRadius * 2, 16);
         const bar = new THREE.Mesh(barGeo, material);
         bar.rotation.x = Math.PI / 2;
         bar.position.set(0, goalHeight, 0);
 
-        // 3. Top Supports (Horizontal Backwards) - Box Shape
         const topSupportGeo = new THREE.CylinderGeometry(postRadius * 0.5, postRadius * 0.5, goalDepth, 8);
         const topSupport1 = new THREE.Mesh(topSupportGeo, material);
         topSupport1.rotation.z = Math.PI / 2;
@@ -464,13 +435,11 @@ function createGoals() {
         const topSupport2 = topSupport1.clone();
         topSupport2.position.set(-goalDepth/2, goalHeight, goalWidth/2);
 
-        // 4. Back Top Bar
         const backTopBarGeo = new THREE.CylinderGeometry(postRadius * 0.5, postRadius * 0.5, goalWidth, 8);
         const backTopBar = new THREE.Mesh(backTopBarGeo, material);
         backTopBar.rotation.x = Math.PI / 2;
         backTopBar.position.set(-goalDepth, goalHeight, 0);
 
-        // 5. Bottom Ground Frame (Side Bottom)
         const bottomGeo = new THREE.CylinderGeometry(postRadius * 0.5, postRadius * 0.5, goalDepth, 8);
         const bottom1 = new THREE.Mesh(bottomGeo, material);
         bottom1.rotation.z = Math.PI / 2;
@@ -479,15 +448,11 @@ function createGoals() {
         const bottom2 = bottom1.clone();
         bottom2.position.set(-goalDepth/2, 0, goalWidth/2);
 
-        // 6. Back Ground Bar (Rear Bottom)
         const backBarGeo = new THREE.CylinderGeometry(postRadius * 0.5, postRadius * 0.5, goalWidth, 8);
         const backBar = new THREE.Mesh(backBarGeo, material);
         backBar.rotation.x = Math.PI / 2;
         backBar.position.set(-goalDepth, 0, 0);
 
-        // --- Net Meshes ---
-        
-        // Back Net
         const backNetGeo = new THREE.PlaneGeometry(goalWidth, goalHeight);
         const backNet = new THREE.Mesh(backNetGeo, netMaterial.clone());
         backNet.material.map = netTexture.clone();
@@ -496,7 +461,6 @@ function createGoals() {
         backNet.position.set(-goalDepth, goalHeight/2, 0);
         backNet.rotation.y = -Math.PI / 2;
 
-        // Top Net (Adjusted dimensions for correct orientation)
         const topNetGeo = new THREE.PlaneGeometry(goalDepth, goalWidth);
         const topNet = new THREE.Mesh(topNetGeo, netMaterial.clone());
         topNet.material.map = netTexture.clone();
@@ -505,7 +469,6 @@ function createGoals() {
         topNet.position.set(-goalDepth/2, goalHeight, 0);
         topNet.rotation.x = -Math.PI / 2;
 
-        // Left Side Net
         const sideNetGeo = new THREE.PlaneGeometry(goalDepth, goalHeight);
         const leftNet = new THREE.Mesh(sideNetGeo, netMaterial.clone());
         leftNet.material.map = netTexture.clone();
@@ -513,21 +476,17 @@ function createGoals() {
         leftNet.material.map.needsUpdate = true;
         leftNet.position.set(-goalDepth/2, goalHeight/2, -goalWidth/2);
         
-        // Right Side Net
         const rightNet = leftNet.clone();
-        rightNet.material = leftNet.material.clone(); // Clone material for independent map if needed
+        rightNet.material = leftNet.material.clone(); 
         rightNet.position.set(-goalDepth/2, goalHeight/2, goalWidth/2);
 
-        // Assemble Goal
         goal.add(post1, post2, bar, topSupport1, topSupport2, backTopBar, bottom1, bottom2, backBar);
         goal.add(backNet, topNet, leftNet, rightNet);
         
-        // Position Goal on Field
         const xPos = isLeft ? -FIELD_WIDTH / 2 : FIELD_WIDTH / 2;
         goal.position.set(xPos, 0, 0);
         
         if (!isLeft) {
-            // Right goal needs to rotate to face the field (-X)
             goal.rotation.y = Math.PI;
         }
 
@@ -536,32 +495,56 @@ function createGoals() {
 
     goalsGroup.add(buildGoal(true));
     
-    // Only add Right goal if Full mode
     if (currentViewMode === 'full') {
         goalsGroup.add(buildGoal(false));
     }
+}
+
+// --- Ball Texture Generation ---
+function createBallTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    // White background
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, 512, 256);
+    
+    // Draw simple black patches (Pentagon-ish circles)
+    ctx.fillStyle = '#000000';
+    const patches = [
+        {x: 128, y: 128}, {x: 384, y: 128}, // Equator
+        {x: 64, y: 64}, {x: 192, y: 64}, {x: 320, y: 64}, {x: 448, y: 64},
+        {x: 64, y: 192}, {x: 192, y: 192}, {x: 320, y: 192}, {x: 448, y: 192}
+    ];
+    
+    patches.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 35, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
 }
 
 function createBall(x = 0, z = 0) {
     if(ball) scene.remove(ball);
 
     const geometry = new THREE.SphereGeometry(1.2, 32, 32); 
-    const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const material = new THREE.MeshStandardMaterial({ 
+        map: createBallTexture(),
+        roughness: 0.4,
+        metalness: 0.1
+    });
     ball = new THREE.Mesh(geometry, material);
     ball.position.set(x, 1.2, z);
     ball.castShadow = true;
     ball.userData = { type: 'ball', draggable: true };
     scene.add(ball);
-
-    // Ball Label
-    const div = document.createElement('div');
-    div.textContent = '⚽';
-    div.style.fontSize = '24px';
-    div.style.textShadow = '0 0 5px black';
-    div.style.cursor = 'grab';
-    const label = new CSS2DObject(div);
-    label.position.set(0, 0, 0);
-    ball.add(label);
+    
+    // Note: Removed label for "Real Ball" look as requested
 }
 
 function createPlayer(team, id, number, x, z, name = null) {
@@ -573,11 +556,9 @@ function createPlayer(team, id, number, x, z, name = null) {
         name = translations[currentLang]['player-name-default'];
     }
 
-    // Player Group
     const group = new THREE.Group();
     group.position.set(x, 0, z);
     
-    // Set initial facing direction
     if (team === 'teamA') {
         group.rotation.y = Math.PI / 2;
     } else {
@@ -592,7 +573,6 @@ function createPlayer(team, id, number, x, z, name = null) {
     const hairMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
-    // Base
     const baseGeo = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 0.2, 32);
     const base = new THREE.Mesh(baseGeo, baseMat);
     base.position.y = 0.1;
@@ -600,7 +580,6 @@ function createPlayer(team, id, number, x, z, name = null) {
     base.receiveShadow = true;
     group.add(base);
 
-    // Legs
     const legGeo = new THREE.CylinderGeometry(0.35, 0.3, 1.4, 16);
     const leftLeg = new THREE.Mesh(legGeo, kitMat);
     leftLeg.position.set(-0.45, 0.9, 0); 
@@ -611,14 +590,12 @@ function createPlayer(team, id, number, x, z, name = null) {
     rightLeg.castShadow = true;
     group.add(rightLeg);
 
-    // Torso
     const torsoGeo = new THREE.CylinderGeometry(0.8, 0.7, 1.6, 32);
     const torso = new THREE.Mesh(torsoGeo, kitMat);
     torso.position.set(0, 2.4, 0); 
     torso.castShadow = true;
     group.add(torso);
 
-    // Arms
     const armGeo = new THREE.CylinderGeometry(0.25, 0.2, 1.3, 16);
     const leftArm = new THREE.Mesh(armGeo, skinMat);
     leftArm.position.set(-1.0, 2.6, 0); 
@@ -631,7 +608,6 @@ function createPlayer(team, id, number, x, z, name = null) {
     rightArm.castShadow = true;
     group.add(rightArm);
 
-    // Sleeves
     const sleeveGeo = new THREE.SphereGeometry(0.35, 16, 16);
     const leftSleeve = new THREE.Mesh(sleeveGeo, kitMat);
     leftSleeve.position.set(-0.9, 3.0, 0);
@@ -640,25 +616,22 @@ function createPlayer(team, id, number, x, z, name = null) {
     rightSleeve.position.set(0.9, 3.0, 0);
     group.add(rightSleeve);
 
-    // Head
     const headGeo = new THREE.SphereGeometry(0.65, 32, 32);
     const head = new THREE.Mesh(headGeo, skinMat);
     head.position.set(0, 3.7, 0); 
     head.castShadow = true;
     group.add(head);
 
-    // Hair (Back of head)
     const hairSimpleGeo = new THREE.SphereGeometry(0.7, 32, 32);
     const hairMesh = new THREE.Mesh(hairSimpleGeo, hairMat);
-    hairMesh.position.set(0, 3.85, -0.25); // Offset to back and up
+    hairMesh.position.set(0, 3.85, -0.25); 
     hairMesh.scale.set(0.95, 0.9, 0.85); 
     hairMesh.castShadow = true;
     group.add(hairMesh);
 
-    // Eyes (Front of head)
     const eyeGeo = new THREE.SphereGeometry(0.08, 16, 16);
     const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-    leftEye.position.set(-0.2, 3.8, 0.58); // Front and slightly apart
+    leftEye.position.set(-0.2, 3.8, 0.58); 
     group.add(leftEye);
     
     const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -667,7 +640,6 @@ function createPlayer(team, id, number, x, z, name = null) {
 
     group.userData.kitMeshes = [leftLeg, rightLeg, torso, leftSleeve, rightSleeve];
 
-    // HTML Label
     const div = document.createElement('div');
     div.className = 'player-label';
     const numSpan = document.createElement('span');
@@ -742,44 +714,14 @@ function updateFormation(team) {
         if (isHalfView) {
             // Half Court Logic:
             // Field range: -52.5 to 0. Center is -26.25.
-            // Team A: Map to Left sub-half (-50 to -27 approx)
-            // Team B: Map to Right sub-half (-25 to -2 approx)
             
             if (team === 'teamA') {
-                // Team A standard is -50 to 0.
-                // We keep them roughly there, but maybe compress slightly to fit left of center?
-                // Actually, standard positions for A are already in the left area (-50 to -10).
-                // Let's just keep them, or slight shift.
-                // Let's ensure they stay left of x=-26.
-                // A simplified mapping: If x > -26, clamp it? No.
-                // Let's just use original coordinates for Team A as they are typically defenders/GK in this view.
-                // But if they are attackers in formation...
-                // Let's shift them slightly to be centered around -39 (center of left-sub-half).
-                // x = (x + 50) * 0.5 - 50? No.
-                
-                // Simple logic: Team A stays relative to goal (-52.5).
-                // Team B is mirrored to start from center line (0) facing left.
-                
-                // Actually, the user asked for "Each team in their own half".
-                // In half court view (which goes from -52.5 to 0), "own half" means splitting this view in two.
-                // Left side: -52.5 to -26.25. Right side: -26.25 to 0.
-                
-                // Map Team A (originally -50 to 25) to [-50, -28]
-                // We take original X, normalize it (assume -50 to 50 range), map to target.
-                const normalizedX = (x + 50) / 100; // 0 to 1
-                const targetW = 20; // width of zone
-                const targetCenter = -39; 
-                // x = targetCenter + (x from centroid)
-                // Let's just hard compress:
+                // Map Team A (-50 to 0) to Left sub-half (-50 to -30 approx)
+                // Compress: x = -50 + (x + 50) * 0.4;
                 x = -50 + (x + 50) * 0.4; 
-                // GK -50 -> -50. 
-                // Striker 0 -> -30.
-                
             } else {
-                // Team B (originally 50 to -25)
-                // Map to [-24, -2] (Right side of half court)
-                // GK 50 -> -2.
-                // Striker 0 -> -22.
+                // Map Team B (50 to 0) to Right sub-half (-2 to -22 approx)
+                // Compress & Shift: x = -2 - (50 - x) * 0.4;
                 x = -2 - (50 - x) * 0.4;
             }
         }
@@ -787,6 +729,10 @@ function updateFormation(team) {
         group.add(createPlayer(team, `${team}-${p.n}`, p.n, x, z));
     });
 }
+
+// ... (Interaction, Drawing, History, Animation, Storage, UI, Loop functions remain same)
+// Re-paste them to ensure full file integrity if needed, but for brevity here I ensure the above functions are the ones modified.
+// For the final file output, I will include the full file content.
 
 // --- Interaction ---
 
@@ -799,20 +745,16 @@ function onPointerDown(event) {
 
     raycaster.setFromCamera(pointer, camera);
 
-    // 1. Move & Rotate Tool Priority
     if (currentTool === 'move' || currentTool === 'rotate') {
         const objects = [...playersGroup.children, ball];
-        // Recursive check for Group children (meshes inside player)
         const intersects = raycaster.intersectObjects(objects, true);
 
         if (intersects.length > 0) {
             let target = intersects[0].object;
-            // Traverse up to find the root player group
             while (target.parent && !target.userData.draggable && target.parent !== scene && target.parent !== playersGroup) {
                 target = target.parent;
             }
 
-            // Check if the found target (or its parent) is draggable
             if (target.userData.draggable) {
                 isDragging = true;
                 draggedObject = target;
@@ -822,7 +764,6 @@ function onPointerDown(event) {
         }
     } 
     
-    // 2. Draw Tool
     if (currentTool === 'draw') {
         const intersects = raycaster.intersectObject(fieldPlane);
         if (intersects.length > 0) {
@@ -844,7 +785,6 @@ function onPointerMove(event) {
 
     raycaster.setFromCamera(pointer, camera);
 
-    // Rotate Logic
     if (draggedObject && currentTool === 'rotate') {
         const intersects = raycaster.intersectObject(fieldPlane);
         if (intersects.length > 0) {
@@ -854,16 +794,12 @@ function onPointerMove(event) {
         return;
     }
 
-    // Move Logic
     if (draggedObject && currentTool === 'move') {
         const intersects = raycaster.intersectObject(dragPlane);
         if (intersects.length > 0) {
             const point = intersects[0].point;
             const x = Math.max(-FIELD_WIDTH/2, Math.min(FIELD_WIDTH/2, point.x));
             const z = Math.max(-FIELD_HEIGHT/2, Math.min(FIELD_HEIGHT/2, point.z));
-            
-            // Keep existing Y (which is 0 for Group, or 1.2 for ball mesh)
-            // If draggedObject is the ball mesh, y=1.2. If group, y=0.
             draggedObject.position.set(x, draggedObject.position.y, z);
         }
     } else if (isDrawing && currentTool === 'draw') {
@@ -876,20 +812,18 @@ function onPointerMove(event) {
 
 function onPointerUp() {
     if (isDragging || isDrawing) {
-        if (isDragging) pushHistory(); // Save to history
+        if (isDragging) pushHistory(); 
         if (isDrawing) {
             endDrawing();
             pushHistory(); 
         }
 
-        saveData(); // Persist
+        saveData(); 
         isDragging = false;
         draggedObject = null;
         controls.enabled = true; 
     }
 }
-
-// --- Drawing ---
 
 function startDrawing(point) {
     drawingPoints = [point];
@@ -981,8 +915,6 @@ function endDrawing() {
     drawingPoints = [];
 }
 
-// --- History System ---
-
 function getSnapshot() {
     const data = {
         players: [],
@@ -1012,7 +944,6 @@ function getSnapshot() {
 }
 
 function pushHistory() {
-    // Remove future history if we are in middle
     if (historyStep < historyStack.length - 1) {
         historyStack = historyStack.slice(0, historyStep + 1);
     }
@@ -1026,10 +957,8 @@ function pushHistory() {
 function restoreSnapshot(json) {
     const data = JSON.parse(json);
     
-    // Restore Ball
     ball.position.set(data.ball.x, 1.2, data.ball.z);
 
-    // Restore Players Positions
     data.players.forEach(pData => {
         const player = playersGroup.children.find(p => p.userData.id === pData.id);
         if(player) {
@@ -1038,7 +967,6 @@ function restoreSnapshot(json) {
         }
     });
 
-    // Restore Lines (Rebuild)
     while(linesGroup.children.length > 0){ 
         const obj = linesGroup.children[0];
         if(obj.userData.arrow) linesGroup.remove(obj.userData.arrow);
@@ -1063,7 +991,7 @@ function restoreSnapshot(json) {
     
     drawingPoints = [];
     currentLine = null;
-    saveData(); // Persist to LS
+    saveData(); 
 }
 
 function updateHistoryButtons() {
@@ -1071,10 +999,7 @@ function updateHistoryButtons() {
     document.getElementById('redo-btn').disabled = historyStep >= historyStack.length - 1;
 }
 
-// --- Animation System ---
-
 function setAnimStart() {
-    // Save current positions as start
     const positions = {};
     playersGroup.children.forEach(p => {
         positions[p.userData.id] = { x: p.position.x, z: p.position.z, rot: p.rotation.y };
@@ -1082,7 +1007,6 @@ function setAnimStart() {
     positions['ball'] = { x: ball.position.x, z: ball.position.z };
     animStartPositions = positions;
     
-    // Visual feedback
     document.getElementById('anim-set-start').classList.add('text-green-500');
     document.getElementById('anim-play').disabled = false;
     
@@ -1093,15 +1017,12 @@ function playAnim() {
     if (isAnimating || !animStartPositions) return;
     isAnimating = true;
 
-    // Capture End Positions (Current)
     const endPositions = {};
     playersGroup.children.forEach(p => {
         endPositions[p.userData.id] = { x: p.position.x, z: p.position.z, rot: p.rotation.y };
     });
     endPositions['ball'] = { x: ball.position.x, z: ball.position.z };
 
-    // Reset to Start
-    // We use TWEEN to animate from Start -> End
     playersGroup.children.forEach(p => {
         const start = animStartPositions[p.userData.id];
         if(start) {
@@ -1115,7 +1036,6 @@ function playAnim() {
                     .easing(TWEEN.Easing.Quadratic.InOut)
                     .start();
                 
-                // Simple rotation interpolation
                 new TWEEN.Tween(p.rotation)
                     .to({ y: target.rot }, 2000)
                     .start();
@@ -1123,7 +1043,6 @@ function playAnim() {
         }
     });
 
-    // Ball Anim
     const bStart = animStartPositions['ball'];
     const bEnd = endPositions['ball'];
     if(bStart && bEnd) {
@@ -1134,13 +1053,10 @@ function playAnim() {
             .start();
     }
 
-    // Cleanup after anim
     setTimeout(() => {
         isAnimating = false;
     }, 2100);
 }
-
-// --- Local Storage Logic (Updated) ---
 
 function saveData() {
     const data = {
@@ -1151,7 +1067,7 @@ function saveData() {
         showOpponent: document.getElementById('show-opponent').checked,
         viewMode: currentViewMode,
         isDarkMode: document.body.classList.contains('dark-mode'),
-        language: currentLang, // Save language preference
+        language: currentLang, 
         ball: { x: ball.position.x, z: ball.position.z },
         players: [],
         lines: []
@@ -1167,7 +1083,7 @@ function saveData() {
             id: group.userData.id,
             x: group.position.x,
             z: group.position.z,
-            rotY: group.rotation.y, // Save Rotation
+            rotY: group.rotation.y, 
             number: number,
             name: name
         });
@@ -1192,18 +1108,16 @@ function loadData() {
         createBall();
         updateFormation('teamA');
         updateFormation('teamB');
-        updateLanguage('zh-TW'); // Default lang
-        pushHistory(); // Initial state
+        updateLanguage('zh-TW'); 
+        pushHistory(); 
         return;
     }
 
     const data = JSON.parse(json);
 
-    // Update UI inputs from loaded data
     document.getElementById('team-a-color').value = data.teamAColor;
     document.getElementById('team-b-color').value = data.teamBColor;
     
-    // Sync Formation Grids UI
     document.getElementById('team-a-formation').value = data.teamAFormation;
     const gridA = document.getElementById('team-a-formation-grid');
     if(gridA) {
@@ -1223,7 +1137,6 @@ function loadData() {
     document.getElementById('show-opponent').checked = data.showOpponent;
     
     currentViewMode = data.viewMode || 'full';
-    // Sync Segment control
     const viewControl = document.getElementById('view-mode-control');
     viewControl.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
     viewControl.querySelector(`[data-value="${currentViewMode}"]`).classList.add('active');
@@ -1233,12 +1146,10 @@ function loadData() {
         document.getElementById('dark-mode').checked = true;
     }
 
-    // Load Language
     const savedLang = data.language || 'zh-TW';
     document.getElementById('language-select').value = savedLang;
     updateLanguage(savedLang);
 
-    // Update Colors in sidebar UI visually (dot colors)
     document.getElementById('team-a-dot').style.backgroundColor = data.teamAColor;
     document.getElementById('team-b-dot').style.backgroundColor = data.teamBColor;
 
@@ -1253,11 +1164,10 @@ function loadData() {
     data.players.forEach(p => {
         if (p.team === 'teamB' && !data.showOpponent) return;
         const player = createPlayer(p.team, p.id, p.number, p.x, p.z, p.name);
-        player.rotation.y = p.rotY || 0; // Load rotation
+        player.rotation.y = p.rotY || 0; 
         playersGroup.add(player);
     });
     
-    // Initialize view state properly
     createField(currentViewMode);
     createGoals();
     handleViewChange(currentViewMode, false); 
@@ -1296,19 +1206,18 @@ function loadData() {
     drawingPoints = [];
     currentLine = null;
     
-    pushHistory(); // Initial state for undo
+    pushHistory(); 
 }
 
 function handleViewChange(mode, refresh = true) {
     currentViewMode = mode;
     
-    // Regenerate Field and Goals for the new view mode
     createField(mode);
     createGoals();
 
     if (mode === 'half') {
             controls.minDistance = 5;
-            camera.position.set(-26.25, 50, 20); // Center over left half
+            camera.position.set(-26.25, 50, 20); 
             controls.target.set(-26.25, 0, 0);
     } else {
             controls.minDistance = 20;
@@ -1325,10 +1234,7 @@ function handleViewChange(mode, refresh = true) {
     }
 }
 
-// --- UI Setup Logic ---
-
 function setupUI() {
-    // 1. Sidebar Toggles
     const sidebar = document.getElementById('sidebar');
     const settingsToggle = document.getElementById('settings-toggle');
     const closeSidebarBtn = document.getElementById('close-sidebar');
@@ -1353,7 +1259,6 @@ function setupUI() {
         }
     });
 
-    // 2. Accordion Logic
     window.toggleAccordion = (id) => {
         const content = document.getElementById(id);
         const allContents = document.querySelectorAll('.accordion-content');
@@ -1363,7 +1268,6 @@ function setupUI() {
         content.classList.toggle('open');
     };
 
-    // 3. Formation Grids
     function setupFormationGrid(team) {
         const grid = document.getElementById(`${team}-formation-grid`);
         const select = document.getElementById(`${team}-formation`);
@@ -1380,7 +1284,6 @@ function setupUI() {
     setupFormationGrid('team-a');
     setupFormationGrid('team-b');
 
-    // 4. View Mode Segmented Control
     const viewControl = document.getElementById('view-mode-control');
     viewControl.addEventListener('click', (e) => {
         if (e.target.classList.contains('segment-btn')) {
@@ -1391,14 +1294,12 @@ function setupUI() {
         }
     });
 
-    // 5. Language Control
     const langSelect = document.getElementById('language-select');
     langSelect.addEventListener('change', (e) => {
         updateLanguage(e.target.value);
         saveData();
     });
 
-    // 6. Bottom Toolbar
     const toolBtns = document.querySelectorAll('#bottom-toolbar .icon-btn[data-tool]');
     const drawOptionsPanel = document.getElementById('draw-options-panel');
     const lineTypeBtns = document.querySelectorAll('[data-tool-type]');
@@ -1426,7 +1327,6 @@ function setupUI() {
     });
     document.querySelector('[data-tool-type="solid"]').classList.add('active');
 
-    // 7. Custom Color Picker
     const colorSwatches = document.querySelectorAll('.color-swatch');
     const drawColorInput = document.getElementById('draw-color-input');
     const customColorTrigger = document.getElementById('custom-color-trigger');
@@ -1449,7 +1349,6 @@ function setupUI() {
         colorSwatches.forEach(s => s.classList.remove('active'));
     });
 
-    // 8. Old Event Logic (Colors, Dark Mode, Reset, Export, Undo/Redo, Anim)
     const updateColors = () => {
         const colorA = document.getElementById('team-a-color').value;
         const colorB = document.getElementById('team-b-color').value;
@@ -1554,7 +1453,6 @@ function setupUI() {
     document.getElementById('anim-play').addEventListener('click', playAnim);
 }
 
-// --- Loop ---
 function onWindowResize() {
     const container = document.getElementById('canvas-container');
     if (container && camera && renderer && labelRenderer) {
@@ -1567,7 +1465,7 @@ function onWindowResize() {
 
 function animate() {
     requestAnimationFrame(animate);
-    TWEEN.update(); // Update Tween
+    TWEEN.update(); 
     if (controls) controls.update();
     if (renderer && scene && camera) renderer.render(scene, camera);
     if (labelRenderer && scene && camera) labelRenderer.render(scene, camera);
