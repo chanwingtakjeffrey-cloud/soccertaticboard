@@ -134,38 +134,48 @@
             </button>
         </div>
 
-        <!-- Language Settings -->
+        <!-- General Settings (Language & Dark Mode) - Modern Grouped Style -->
         <div class="mb-6">
-            <div class="section-title" data-i18n="language">語言 (Language)</div>
-            <select id="language-select" class="w-full p-2 rounded-lg bg-gray-100 dark:bg-gray-700 border-none outline-none cursor-pointer">
-                <option value="zh-TW">繁體中文</option>
-                <option value="en">English</option>
-            </select>
+            <div class="section-title" data-i18n="general-settings">一般設定</div>
+            <div class="bg-gray-50 dark:bg-white/5 rounded-xl overflow-hidden border border-gray-100 dark:border-white/5">
+                
+                <!-- Language Row -->
+                <div class="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div class="text-sm font-medium" data-i18n="language">語言 (Language)</div>
+                    <select id="language-select" class="p-1 rounded bg-transparent text-right outline-none cursor-pointer text-sm text-gray-500 dark:text-gray-300">
+                        <option value="zh-TW">繁體中文</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+
+                <!-- Dark Mode Row -->
+                <div class="flex items-center justify-between p-3">
+                    <span class="text-sm font-medium" data-i18n="dark-mode">深色模式</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="dark-mode" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+            </div>
         </div>
 
-        <!-- View Settings -->
+        <!-- View Settings - Modern Grouped Style -->
         <div class="mb-6">
             <div class="section-title" data-i18n="display-settings">顯示設定</div>
-            
-            <div class="segmented-control mb-4" id="view-mode-control">
-                <div class="segment-btn active" data-value="full" data-i18n="full-court">全場</div>
-                <div class="segment-btn" data-value="half" data-i18n="half-court">半場</div>
-            </div>
+            <div class="bg-gray-50 dark:bg-white/5 rounded-xl overflow-hidden border border-gray-100 dark:border-white/5 p-3">
+                
+                <div class="segmented-control mb-3" id="view-mode-control">
+                    <div class="segment-btn active" data-value="full" data-i18n="full-court">全場</div>
+                    <div class="segment-btn" data-value="half" data-i18n="half-court">半場</div>
+                </div>
 
-            <div class="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                <span class="font-medium" data-i18n="show-opponent">顯示對手 (B隊)</span>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="show-opponent" checked class="sr-only peer">
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-            </div>
-
-            <div class="flex items-center justify-between py-2 mt-2">
-                <span class="font-medium" data-i18n="dark-mode">深色模式</span>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="dark-mode" class="sr-only peer">
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
+                <div class="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <span class="text-sm font-medium" data-i18n="show-opponent">顯示對手 (B隊)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="show-opponent" checked class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -243,7 +253,7 @@
         </div>
         
         <div class="text-center text-xs text-gray-400 mt-6 pb-4" data-i18n="version">
-            v2.2 • 3D Tactical Board
+            v2.6 • 3D Tactical Board
         </div>
     </div>
 
