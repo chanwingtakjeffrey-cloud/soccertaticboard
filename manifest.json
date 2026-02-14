@@ -1,6 +1,6 @@
 {
-  "name": "3D 足球戰術板",
-  "short_name": "戰術板",
+  "name": "3D Soccer Tactic Board (足球戰術板)",
+  "short_name": "Tactic3D",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f3f4f6",
