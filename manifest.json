@@ -1,0 +1,23 @@
+{
+  "name": "3D 足球戰術板",
+  "short_name": "戰術板",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#1f2937",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/33/33736.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/33/33736.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

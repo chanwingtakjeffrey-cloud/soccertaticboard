@@ -1,0 +1,343 @@
+:root {
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+    --blur: 20px;
+    --accent-color: #3b82f6;
+    --text-main: #1f2937;
+}
+
+body.dark-mode {
+    --glass-bg: rgba(17, 24, 39, 0.85);
+    --glass-border: rgba(55, 65, 81, 0.5);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    --accent-color: #60a5fa;
+    --text-main: #f3f4f6;
+}
+
+body {
+    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    background-color: #f3f4f6;
+    color: var(--text-main);
+    overflow: hidden; 
+    margin: 0;
+    display: flex;
+    height: 100vh;
+    touch-action: none; 
+}
+
+body.dark-mode {
+    background-color: #111827;
+}
+
+/* --- 3D Canvas --- */
+#canvas-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    background: radial-gradient(circle at center, #e5e7eb 0%, #d1d5db 100%);
+}
+body.dark-mode #canvas-container {
+    background: radial-gradient(circle at center, #1f2937 0%, #111827 100%);
+}
+
+/* --- Settings Toggle Button (Top Left) --- */
+#settings-toggle {
+    position: absolute;
+    top: 1.5rem;
+    left: 1.5rem;
+    z-index: 50;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--text-main);
+}
+#settings-toggle:active { transform: scale(0.95); }
+
+/* --- Floating Sidebar (Settings) --- */
+#sidebar {
+    position: absolute;
+    z-index: 40;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    color: var(--text-main);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    
+    /* Desktop Default (Floating Card) */
+    top: 1.5rem;
+    left: 1.5rem;
+    bottom: 1.5rem;
+    width: 360px;
+    border-radius: 24px;
+    padding: 1.5rem;
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#sidebar.collapsed {
+    transform: translateX(-120%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Mobile Adjustments for Sidebar (Bottom Sheet) */
+@media (max-width: 768px) {
+    #sidebar {
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 80vh; /* Max height */
+        border-radius: 24px 24px 0 0;
+        transform: translateY(0);
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+    }
+    #sidebar.collapsed {
+        transform: translateY(105%);
+    }
+}
+
+/* --- Bottom Toolbar (The Island) --- */
+#bottom-toolbar {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 9999px; /* Pill shape */
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    max-width: 95vw;
+}
+
+/* Expandable Draw Section */
+.toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background-color: var(--glass-border);
+    margin: 0 4px;
+}
+
+.draw-options {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow: hidden;
+    max-width: 0;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.draw-options.visible {
+    max-width: 500px; /* Arbitrary large number for transition */
+    opacity: 1;
+    padding-right: 0.5rem;
+}
+
+/* Tool Buttons */
+.icon-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-main);
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.icon-btn:hover { background-color: rgba(0,0,0,0.05); }
+.icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+body.dark-mode .icon-btn:hover { background-color: rgba(255,255,255,0.1); }
+
+.icon-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Animation specific styles */
+.anim-recording {
+    animation: pulse-red 2s infinite;
+    color: #ef4444;
+}
+@keyframes pulse-red {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Custom Color Picker Swatches */
+.color-swatch-container {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.2s;
+}
+.color-swatch:hover { transform: scale(1.1); }
+.color-swatch.active { border-color: var(--text-main); transform: scale(1.1); }
+
+#custom-color-trigger {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+
+/* --- Sidebar Components --- */
+.section-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9ca3af;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    margin-top: 1.5rem;
+}
+.section-title:first-child { margin-top: 0; }
+
+/* Segmented Control */
+.segmented-control {
+    display: flex;
+    background: rgba(0,0,0,0.05);
+    padding: 4px;
+    border-radius: 12px;
+    position: relative;
+}
+body.dark-mode .segmented-control { background: rgba(255,255,255,0.1); }
+
+.segment-btn {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 8px;
+    z-index: 2;
+    transition: color 0.2s;
+}
+.segment-btn.active {
+    background-color: white;
+    color: black;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+body.dark-mode .segment-btn.active {
+    background-color: #374151;
+    color: white;
+}
+
+/* Bento Grid for Formations */
+.formation-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+.formation-card {
+    background: rgba(0,0,0,0.03);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+body.dark-mode .formation-card { background: rgba(255,255,255,0.05); }
+
+.formation-card:hover { border-color: var(--accent-color); }
+.formation-card.active {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* Accordion */
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(0,0,0,0.03);
+    border-radius: 12px;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+body.dark-mode .accordion-header { background: rgba(255,255,255,0.05); }
+
+.accordion-content {
+    display: none;
+    padding: 0.5rem;
+    animation: slideDown 0.2s ease-out;
+}
+.accordion-content.open { display: block; }
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading Overlay */
+#loading {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-light);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    transition: opacity 0.5s;
+}
+body.dark-mode #loading { background: #111827; }
+
+/* Install Button in Sidebar */
+#install-pwa-btn { display: none; }
+
+/* Utility */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

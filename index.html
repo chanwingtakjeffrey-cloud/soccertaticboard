@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- PWA Meta Tags -->
+    <title data-i18n="app-title">3D 足球戰術板 (3D Soccer Tactic Board)</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#f3f4f6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- 外部樣式表 -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PDF Tools -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Tweening Library for Animation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    
+    <!-- Loading Screen -->
+    <div id="loading" class="flex flex-col items-center gap-4">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+        <div class="text-sm font-medium opacity-70 dark:text-white" data-i18n="init-loading">初始化戰術板...</div>
+    </div>
+
+    <!-- 3D Scene -->
+    <div id="canvas-container">
+        <!-- Settings Toggle (Gear Icon) -->
+        <button id="settings-toggle" title="Settings">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.35a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+
+        <!-- Floating Bottom Toolbar (The Island) -->
+        <div id="bottom-toolbar">
+            
+            <!-- History Controls -->
+            <button class="icon-btn" id="undo-btn" title="Undo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+            </button>
+            <button class="icon-btn" id="redo-btn" title="Redo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+            </button>
+
+            <div class="toolbar-divider"></div>
+
+            <!-- Primary Tools -->
+            <button class="icon-btn active" data-tool="move" title="Move">
+                <!-- Hand Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+            </button>
+            
+            <button class="icon-btn" data-tool="rotate" title="Rotate">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+
+            <button class="icon-btn" data-tool="draw" title="Draw">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+
+            <!-- Expanded Draw Options -->
+            <div class="draw-options" id="draw-options-panel">
+                <div class="toolbar-divider"></div>
+                
+                <button class="icon-btn" data-tool-type="solid" title="Solid Line">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="12" x2="20" y2="12"></line></svg>
+                </button>
+                <button class="icon-btn" data-tool-type="dashed" title="Dashed Line (Pass)">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4"><line x1="4" y1="12" x2="20" y2="12"></line></svg>
+                </button>
+                <button class="icon-btn" data-tool-type="wavy" title="Wavy Line (Run)">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0s5-3 7.5 0"></path></svg>
+                </button>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="color-swatch-container">
+                    <div class="color-swatch active" style="background-color: #ffff00;" data-color="#ffff00"></div>
+                    <div class="color-swatch" style="background-color: #ffffff;" data-color="#ffffff"></div>
+                    <div class="color-swatch" style="background-color: #ef4444;" data-color="#ef4444"></div>
+                    <div class="color-swatch" style="background-color: #3b82f6;" data-color="#3b82f6"></div>
+                    <div id="custom-color-trigger"></div>
+                    <input type="color" id="draw-color-input" class="sr-only">
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                <button class="icon-btn text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" id="clear-lines-btn" title="Clear All Lines">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </button>
+            </div>
+
+            <div class="toolbar-divider"></div>
+
+            <!-- Animation Controls -->
+            <div class="flex items-center gap-1" id="anim-controls">
+                <button class="icon-btn" id="anim-set-start" title="Set Start Position">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
+                </button>
+                <button class="icon-btn" id="anim-play" title="Play Animation" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Floating Sidebar (Settings Panel) -->
+    <div id="sidebar" class="collapsed no-scrollbar">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold" data-i18n="settings-title">戰術板設定</h2>
+            <button id="close-sidebar" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+
+        <!-- Language Settings -->
+        <div class="mb-6">
+            <div class="section-title" data-i18n="language">語言 (Language)</div>
+            <select id="language-select" class="w-full p-2 rounded-lg bg-gray-100 dark:bg-gray-700 border-none outline-none cursor-pointer">
+                <option value="zh-TW">繁體中文</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+
+        <!-- View Settings -->
+        <div class="mb-6">
+            <div class="section-title" data-i18n="display-settings">顯示設定</div>
+            
+            <div class="segmented-control mb-4" id="view-mode-control">
+                <div class="segment-btn active" data-value="full" data-i18n="full-court">全場</div>
+                <div class="segment-btn" data-value="half" data-i18n="half-court">半場</div>
+            </div>
+
+            <div class="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                <span class="font-medium" data-i18n="show-opponent">顯示對手 (B隊)</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="show-opponent" checked class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+            </div>
+
+            <div class="flex items-center justify-between py-2 mt-2">
+                <span class="font-medium" data-i18n="dark-mode">深色模式</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="dark-mode" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Teams Configuration -->
+        <div class="mb-6">
+            <div class="section-title" data-i18n="team-config">球隊配置</div>
+
+            <!-- Team A Accordion -->
+            <div class="accordion-header" onclick="toggleAccordion('team-a-content')">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-yellow-400" id="team-a-dot"></div>
+                    <span data-i18n="team-a">A 隊 (左)</span>
+                </div>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+            <div id="team-a-content" class="accordion-content open">
+                <div class="mb-3">
+                    <label class="text-sm text-gray-500 block mb-1" data-i18n="kit-color">球衣顏色</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="team-a-color" value="#FFD700" class="w-full h-8 rounded-lg cursor-pointer border border-gray-300">
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <label class="text-sm text-gray-500 block mb-2" data-i18n="formation">陣型</label>
+                    <div class="formation-grid" id="team-a-formation-grid">
+                        <div class="formation-card active" data-value="4-3-3">4-3-3</div>
+                        <div class="formation-card" data-value="4-4-2">4-4-2</div>
+                        <div class="formation-card" data-value="4-2-3-1">4-2-3-1</div>
+                        <div class="formation-card" data-value="3-5-2">3-5-2</div>
+                    </div>
+                    <!-- Hidden Select for compatibility -->
+                    <select id="team-a-formation" class="hidden"><option value="4-3-3">4-3-3</option><option value="4-4-2">4-4-2</option><option value="4-2-3-1">4-2-3-1</option><option value="3-5-2">3-5-2</option></select>
+                </div>
+            </div>
+
+            <!-- Team B Accordion -->
+            <div class="accordion-header" onclick="toggleAccordion('team-b-content')">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-blue-500" id="team-b-dot"></div>
+                    <span data-i18n="team-b">B 隊 (右)</span>
+                </div>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+            <div id="team-b-content" class="accordion-content">
+                <div class="mb-3">
+                    <label class="text-sm text-gray-500 block mb-1" data-i18n="kit-color">球衣顏色</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="team-b-color" value="#3b82f6" class="w-full h-8 rounded-lg cursor-pointer border border-gray-300">
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <label class="text-sm text-gray-500 block mb-2" data-i18n="formation">陣型</label>
+                    <div class="formation-grid" id="team-b-formation-grid">
+                        <div class="formation-card active" data-value="4-3-3">4-3-3</div>
+                        <div class="formation-card" data-value="4-4-2">4-4-2</div>
+                        <div class="formation-card" data-value="4-2-3-1">4-2-3-1</div>
+                        <div class="formation-card" data-value="3-5-2">3-5-2</div>
+                    </div>
+                    <select id="team-b-formation" class="hidden"><option value="4-3-3">4-3-3</option><option value="4-4-2">4-4-2</option><option value="4-2-3-1">4-2-3-1</option><option value="3-5-2">3-5-2</option></select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-auto pt-6 flex flex-col gap-3">
+            <button id="reset-pos-btn" class="w-full py-3 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-700 font-bold transition-colors" data-i18n="reset-pos">
+                重置位置
+            </button>
+            <button id="export-pdf-btn" class="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg shadow-blue-500/30 transition-colors flex items-center justify-center gap-2">
+                <span>📥</span> <span data-i18n="download-pdf">下載 PDF</span>
+            </button>
+            <button id="install-pwa-btn" class="w-full py-3 bg-gray-900 text-white rounded-xl hover:bg-black font-bold shadow-lg transition-colors flex items-center justify-center gap-2">
+                <span>📲</span> <span data-i18n="install-app">安裝 App</span>
+            </button>
+        </div>
+        
+        <div class="text-center text-xs text-gray-400 mt-6 pb-4" data-i18n="version">
+            v2.2 • 3D Tactical Board
+        </div>
+    </div>
+
+    <!-- Logic Import -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
