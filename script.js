@@ -35,6 +35,7 @@ const translations = {
     'en': {
         'app-title': '3D Soccer Tactic Board',
         'settings-title': 'Tactical Board Settings',
+        'general-settings': 'General Settings',
         'display-settings': 'Display Settings',
         'full-court': 'Full Court',
         'half-court': 'Half Court',
@@ -50,7 +51,7 @@ const translations = {
         'download-pdf': 'Download PDF',
         'install-app': 'Install App',
         'init-loading': 'Initializing...',
-        'version': 'v2.4 • 3D Tactical Board',
+        'version': 'v2.5 • 3D Tactical Board',
         'player-name-default': 'Name',
         'confirm-reset': 'Are you sure you want to reset all positions?',
         'set-start-alert': 'Start position set! Now move players to "End" position and click Play.'
@@ -58,6 +59,7 @@ const translations = {
     'zh-TW': {
         'app-title': '3D 足球戰術板',
         'settings-title': '戰術板設定',
+        'general-settings': '一般設定',
         'display-settings': '顯示設定',
         'full-court': '全場',
         'half-court': '半場',
@@ -73,7 +75,7 @@ const translations = {
         'download-pdf': '下載 PDF',
         'install-app': '安裝 App',
         'init-loading': '初始化戰術板...',
-        'version': 'v2.4 • 3D Tactical Board',
+        'version': 'v2.5 • 3D Tactical Board',
         'player-name-default': '名字',
         'confirm-reset': '確定要重置所有位置嗎？',
         'set-start-alert': '起點已設定！現在請將球員移動到「終點」位置，然後點擊播放。'
@@ -245,7 +247,9 @@ function init() {
 
 function createFieldTexture(type) {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
+    // Adjust canvas aspect ratio based on type
+    const isHalf = type === 'half';
+    canvas.width = isHalf ? 512 : 1024;
     canvas.height = 664; 
     const ctx = canvas.getContext('2d');
     
@@ -259,7 +263,7 @@ function createFieldTexture(type) {
 
     // Pattern (Grass stripes)
     ctx.fillStyle = 'rgba(0,0,0,0.04)';
-    const stripeCount = 12;
+    const stripeCount = isHalf ? 6 : 12;
     const stripeW = w / stripeCount;
     for(let i=0; i<stripeCount; i+=2) {
         ctx.fillRect(i * stripeW, 0, stripeW, h);
@@ -273,53 +277,69 @@ function createFieldTexture(type) {
     // Border
     ctx.strokeRect(lw/2, lw/2, w-lw, h-lw);
 
-    // Center Line
-    ctx.beginPath();
-    ctx.moveTo(w/2, 0);
-    ctx.lineTo(w/2, h);
-    ctx.stroke();
+    if (!isHalf) {
+        // Full Field Center Line
+        ctx.beginPath();
+        ctx.moveTo(w/2, 0);
+        ctx.lineTo(w/2, h);
+        ctx.stroke();
 
-    // Center Circle
-    ctx.beginPath();
-    ctx.arc(w/2, h/2, h * 0.15, 0, Math.PI * 2);
-    ctx.stroke();
+        // Center Circle
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, h * 0.15, 0, Math.PI * 2);
+        ctx.stroke();
 
-    // Center Dot
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.arc(w/2, h/2, lw, 0, Math.PI * 2);
-    ctx.fill();
+        // Center Dot
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, lw, 0, Math.PI * 2);
+        ctx.fill();
+    } else {
+        // Half Field Center Line (Right side border)
+        // It's already drawn by the border strokeRect
+        
+        // Center Circle Arc (on the Right)
+        ctx.beginPath();
+        ctx.arc(w, h/2, h * 0.15, 0.5 * Math.PI, 1.5 * Math.PI); // Draw left half of circle
+        ctx.stroke();
+    }
 
-    // Penalty Areas
+    // Penalty Areas (Always Left)
     const penaltyH = h * 0.6;
-    const penaltyW = w * 0.16;
+    const penaltyW = isHalf ? w * 0.32 : w * 0.16; // 0.16 of full width = 16.8m approx. 
     const penaltyY = (h - penaltyH) / 2;
     ctx.strokeRect(0, penaltyY, penaltyW, penaltyH);
-    ctx.strokeRect(w - penaltyW, penaltyY, penaltyW, penaltyH);
+    
+    if (!isHalf) {
+        // Right Penalty Area
+        ctx.strokeRect(w - penaltyW, penaltyY, penaltyW, penaltyH);
+    }
 
     // --- Penalty Arcs (鵝眉月) & Spots ---
     // Scale factor (pixels per meter approximation)
-    const scaleX = w / 105; 
+    // Full width 1024px = 105m -> scaleX = 9.75
+    // Half width 512px = 52.5m -> scaleX = 9.75
+    const realWidth = isHalf ? 52.5 : 105;
+    const scaleX = w / realWidth; 
     
     const penaltySpotDist = 11 * scaleX;
     const penaltyRadius = 9.15 * scaleX;
     const penaltyBoxWidth = penaltyW; 
     
-    // Calculate intersection angle to ensure arc starts exactly at box edge
-    // cos(theta) = (boxWidth - spotDist) / radius
+    // Calculate intersection angle
     const arcAngle = Math.acos((penaltyBoxWidth - penaltySpotDist) / penaltyRadius);
 
     // Left Arc
     ctx.beginPath();
-    // Angles for arc on the right side of the spot (facing center)
     ctx.arc(penaltySpotDist, h / 2, penaltyRadius, -arcAngle, arcAngle);
     ctx.stroke();
 
-    // Right Arc
-    ctx.beginPath();
-    // Angles for arc on the left side of the spot (facing center)
-    ctx.arc(w - penaltySpotDist, h / 2, penaltyRadius, Math.PI - arcAngle, Math.PI + arcAngle);
-    ctx.stroke();
+    if (!isHalf) {
+        // Right Arc
+        ctx.beginPath();
+        ctx.arc(w - penaltySpotDist, h / 2, penaltyRadius, Math.PI - arcAngle, Math.PI + arcAngle);
+        ctx.stroke();
+    }
 
     // Penalty Spots
     const spotSize = lw * 1.5;
@@ -329,18 +349,23 @@ function createFieldTexture(type) {
     ctx.arc(penaltySpotDist, h / 2, spotSize, 0, Math.PI * 2);
     ctx.fill();
 
-    // Right Spot
-    ctx.beginPath();
-    ctx.arc(w - penaltySpotDist, h / 2, spotSize, 0, Math.PI * 2);
-    ctx.fill();
+    if (!isHalf) {
+        // Right Spot
+        ctx.beginPath();
+        ctx.arc(w - penaltySpotDist, h / 2, spotSize, 0, Math.PI * 2);
+        ctx.fill();
+    }
     // ------------------------------------
 
     // Goal Areas
     const goalH = h * 0.25;
-    const goalW = w * 0.05;
+    const goalW = isHalf ? w * 0.1 : w * 0.05; // 5.5m approx
     const goalY = (h - goalH) / 2;
     ctx.strokeRect(0, goalY, goalW, goalH);
-    ctx.strokeRect(w - goalW, goalY, goalW, goalH);
+    
+    if (!isHalf) {
+        ctx.strokeRect(w - goalW, goalY, goalW, goalH);
+    }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.anisotropy = 16;
@@ -350,9 +375,13 @@ function createFieldTexture(type) {
 function createField(type) {
     if (fieldPlane) scene.remove(fieldPlane);
     
-    const geometry = new THREE.PlaneGeometry(FIELD_WIDTH, FIELD_HEIGHT);
+    const isHalf = type === 'half';
+    const width = isHalf ? FIELD_WIDTH / 2 : FIELD_WIDTH;
+    const height = FIELD_HEIGHT;
+    
+    const geometry = new THREE.PlaneGeometry(width, height);
     const material = new THREE.MeshStandardMaterial({ 
-        map: createFieldTexture('full'),
+        map: createFieldTexture(type),
         roughness: 0.8,
         metalness: 0.1
     });
@@ -361,12 +390,24 @@ function createField(type) {
     fieldPlane.rotation.x = -Math.PI / 2;
     fieldPlane.receiveShadow = true;
     fieldPlane.name = 'field';
+    
+    // If half, position it to the left side (-26.25), otherwise center (0)
+    // Left half of full field goes from -52.5 to 0. Center is -26.25.
+    if (isHalf) {
+        fieldPlane.position.set(-FIELD_WIDTH/4, 0, 0);
+    } else {
+        fieldPlane.position.set(0, 0, 0);
+    }
+    
     scene.add(fieldPlane);
 }
 
 // --- Goal Posts (龍門架) ---
 function createGoals() {
-    if (goalsGroup.children.length > 0) return;
+    // Clear existing goals
+    while(goalsGroup.children.length > 0){ 
+        goalsGroup.remove(goalsGroup.children[0]); 
+    }
 
     const goalWidth = 7.32;
     const goalHeight = 2.44;
@@ -453,11 +494,11 @@ function createGoals() {
         backNet.position.set(-goalDepth, goalHeight/2, 0);
         backNet.rotation.y = -Math.PI / 2;
 
-        // Top Net
-        const topNetGeo = new THREE.PlaneGeometry(goalWidth, goalDepth);
+        // Top Net (Adjusted dimensions for correct orientation)
+        const topNetGeo = new THREE.PlaneGeometry(goalDepth, goalWidth);
         const topNet = new THREE.Mesh(topNetGeo, netMaterial.clone());
         topNet.material.map = netTexture.clone();
-        topNet.material.map.repeat.set(goalWidth * 4, goalDepth * 4);
+        topNet.material.map.repeat.set(goalDepth * 4, goalWidth * 4);
         topNet.material.map.needsUpdate = true;
         topNet.position.set(-goalDepth/2, goalHeight, 0);
         topNet.rotation.x = -Math.PI / 2;
@@ -469,9 +510,6 @@ function createGoals() {
         leftNet.material.map.repeat.set(goalDepth * 4, goalHeight * 4);
         leftNet.material.map.needsUpdate = true;
         leftNet.position.set(-goalDepth/2, goalHeight/2, -goalWidth/2);
-        // Plane is XY by default. Side net is in XY plane along the depth axis.
-        // We need it to be perpendicular to Z.
-        // Default faces Z. Correct.
         
         // Right Side Net
         const rightNet = leftNet.clone();
@@ -495,7 +533,11 @@ function createGoals() {
     }
 
     goalsGroup.add(buildGoal(true));
-    goalsGroup.add(buildGoal(false));
+    
+    // Only add Right goal if Full mode
+    if (currentViewMode === 'full') {
+        goalsGroup.add(buildGoal(false));
+    }
 }
 
 function createBall(x = 0, z = 0) {
@@ -672,7 +714,6 @@ function updateFormation(team) {
     const formKey = document.getElementById(team === 'teamA' ? 'team-a-formation' : 'team-b-formation').value;
     const data = formations[formKey][team];
     
-    // Check currentViewMode instead of accessing dom directly sometimes
     const isHalfView = currentViewMode === 'half';
     const showOpponent = document.getElementById('show-opponent').checked;
 
@@ -697,12 +738,50 @@ function updateFormation(team) {
         let z = p.z;
         
         if (isHalfView) {
-                if (team === 'teamA') {
-                    x = (x + 52.5) * 0.5 - 52.5 + 26.25; 
-                } else {
-                    x = (x - 52.5) * 0.5 + 26.25; 
-                }
+            // Half Court Logic:
+            // Field range: -52.5 to 0. Center is -26.25.
+            // Team A: Map to Left sub-half (-50 to -27 approx)
+            // Team B: Map to Right sub-half (-25 to -2 approx)
+            
+            if (team === 'teamA') {
+                // Team A standard is -50 to 0.
+                // We keep them roughly there, but maybe compress slightly to fit left of center?
+                // Actually, standard positions for A are already in the left area (-50 to -10).
+                // Let's just keep them, or slight shift.
+                // Let's ensure they stay left of x=-26.
+                // A simplified mapping: If x > -26, clamp it? No.
+                // Let's just use original coordinates for Team A as they are typically defenders/GK in this view.
+                // But if they are attackers in formation...
+                // Let's shift them slightly to be centered around -39 (center of left-sub-half).
+                // x = (x + 50) * 0.5 - 50? No.
+                
+                // Simple logic: Team A stays relative to goal (-52.5).
+                // Team B is mirrored to start from center line (0) facing left.
+                
+                // Actually, the user asked for "Each team in their own half".
+                // In half court view (which goes from -52.5 to 0), "own half" means splitting this view in two.
+                // Left side: -52.5 to -26.25. Right side: -26.25 to 0.
+                
+                // Map Team A (originally -50 to 25) to [-50, -28]
+                // We take original X, normalize it (assume -50 to 50 range), map to target.
+                const normalizedX = (x + 50) / 100; // 0 to 1
+                const targetW = 20; // width of zone
+                const targetCenter = -39; 
+                // x = targetCenter + (x from centroid)
+                // Let's just hard compress:
+                x = -50 + (x + 50) * 0.4; 
+                // GK -50 -> -50. 
+                // Striker 0 -> -30.
+                
+            } else {
+                // Team B (originally 50 to -25)
+                // Map to [-24, -2] (Right side of half court)
+                // GK 50 -> -2.
+                // Striker 0 -> -22.
+                x = -2 - (50 - x) * 0.4;
+            }
         }
+        
         group.add(createPlayer(team, `${team}-${p.n}`, p.n, x, z));
     });
 }
@@ -1176,7 +1255,10 @@ function loadData() {
         playersGroup.add(player);
     });
     
-    handleViewChange(currentViewMode, false); // No refresh needed as we just loaded players
+    // Initialize view state properly
+    createField(currentViewMode);
+    createGoals();
+    handleViewChange(currentViewMode, false); 
 
     while(linesGroup.children.length > 0){ 
         const obj = linesGroup.children[0];
@@ -1217,16 +1299,22 @@ function loadData() {
 
 function handleViewChange(mode, refresh = true) {
     currentViewMode = mode;
+    
+    // Regenerate Field and Goals for the new view mode
+    createField(mode);
+    createGoals();
+
     if (mode === 'half') {
             controls.minDistance = 5;
-            camera.position.set(-20, 50, 0); 
-            controls.target.set(-20, 0, 0);
+            camera.position.set(-26.25, 50, 20); // Center over left half
+            controls.target.set(-26.25, 0, 0);
     } else {
             controls.minDistance = 20;
             camera.position.set(0, 60, 60);
             controls.target.set(0, 0, 0);
     }
     controls.update();
+    
     if (refresh) {
         updateFormation('teamA');
         updateFormation('teamB');
