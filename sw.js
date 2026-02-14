@@ -1,10 +1,11 @@
-const CACHE_NAME = 'soccer-tactic-board-v2'; // Updated version
+const CACHE_NAME = 'soccer-tactic-board-v4'; // Updated version
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './script.js',
   './manifest.json',
+  // Removed specific icon files from cache list to prevent 404 if not present
   // Cache external CDN resources to allow offline usage
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap',
