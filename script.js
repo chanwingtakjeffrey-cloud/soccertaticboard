@@ -51,10 +51,11 @@ const translations = {
         'download-pdf': 'Download PDF',
         'install-app': 'Install App',
         'init-loading': 'Initializing...',
-        'version': 'v2.7 • 3D Tactical Board',
+        'version': 'v2.8 • 3D Tactical Board',
         'player-name-default': 'Name',
         'confirm-reset': 'Are you sure you want to reset all positions?',
-        'set-start-alert': 'Start position set! Now move players to "End" position and click Play.'
+        'set-start-alert': 'Start position set! Now move players to "End" position and click Play.',
+        'load-error': 'Error initializing app. Please refresh.'
     },
     'zh-TW': {
         'app-title': '3D 足球戰術板',
@@ -75,10 +76,11 @@ const translations = {
         'download-pdf': '下載 PDF',
         'install-app': '安裝 App',
         'init-loading': '初始化戰術板...',
-        'version': 'v2.7 • 3D Tactical Board',
+        'version': 'v2.8 • 3D Tactical Board',
         'player-name-default': '名字',
         'confirm-reset': '確定要重置所有位置嗎？',
-        'set-start-alert': '起點已設定！現在請將球員移動到「終點」位置，然後點擊播放。'
+        'set-start-alert': '起點已設定！現在請將球員移動到「終點」位置，然後點擊播放。',
+        'load-error': '初始化失敗，請重新整理頁面。'
     }
 };
 
@@ -154,93 +156,103 @@ init();
 animate();
 
 function init() {
-    const container = document.getElementById('canvas-container');
+    try {
+        const container = document.getElementById('canvas-container');
 
-    // 1. Scene
-    scene = new THREE.Scene();
+        // 1. Scene
+        scene = new THREE.Scene();
 
-    // 2. Camera
-    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(0, 60, 60); 
-    camera.lookAt(0, 0, 0);
+        // 2. Camera
+        camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 60, 60); 
+        camera.lookAt(0, 0, 0);
 
-    // 3. Renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.top = '0';
-    renderer.domElement.style.zIndex = '1';
-    container.appendChild(renderer.domElement);
+        // 3. Renderer
+        renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.domElement.style.position = 'absolute';
+        renderer.domElement.style.top = '0';
+        renderer.domElement.style.zIndex = '1';
+        container.appendChild(renderer.domElement);
 
-    // 4. Label Renderer
-    labelRenderer = new CSS2DRenderer();
-    labelRenderer.setSize(container.clientWidth, container.clientHeight);
-    labelRenderer.domElement.style.position = 'absolute';
-    labelRenderer.domElement.style.top = '0px';
-    labelRenderer.domElement.style.zIndex = '2'; 
-    container.appendChild(labelRenderer.domElement);
+        // 4. Label Renderer
+        labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(container.clientWidth, container.clientHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.zIndex = '2'; 
+        container.appendChild(labelRenderer.domElement);
 
-    // 5. Controls
-    controls = new OrbitControls(camera, labelRenderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.maxPolarAngle = Math.PI / 2 - 0.05; 
-    controls.minDistance = 10;
-    controls.maxDistance = 150;
-    controls.rotateSpeed = 0.7;
+        // 5. Controls
+        controls = new OrbitControls(camera, labelRenderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05; 
+        controls.minDistance = 10;
+        controls.maxDistance = 150;
+        controls.rotateSpeed = 0.7;
 
-    // 6. Light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
+        // 6. Light
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(50, 100, 50);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    scene.add(dirLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
 
-    // 7. Field
-    createField('full');
-    createGoals(); // Create Goal Posts
-    
-    // 8. Interaction Setup
-    raycaster = new THREE.Raycaster();
-    pointer = new THREE.Vector2();
-    
-    dragPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(500, 500),
-        new THREE.MeshBasicMaterial({ visible: false })
-    );
-    dragPlane.rotation.x = -Math.PI / 2;
-    scene.add(dragPlane);
+        // 7. Field
+        createField('full');
+        createGoals(); 
+        
+        // 8. Interaction Setup
+        raycaster = new THREE.Raycaster();
+        pointer = new THREE.Vector2();
+        
+        dragPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(500, 500),
+            new THREE.MeshBasicMaterial({ visible: false })
+        );
+        dragPlane.rotation.x = -Math.PI / 2;
+        scene.add(dragPlane);
 
-    scene.add(playersGroup);
-    scene.add(linesGroup);
-    scene.add(goalsGroup);
+        scene.add(playersGroup);
+        scene.add(linesGroup);
+        scene.add(goalsGroup);
 
-    // 9. Initial Population & Local Storage Load
-    loadData();
+        // 9. Initial Population & Local Storage Load
+        loadData();
 
-    // 10. Event Listeners
-    const resizeObserver = new ResizeObserver(() => {
-        onWindowResize();
-    });
-    resizeObserver.observe(container);
+        // 10. Event Listeners
+        const resizeObserver = new ResizeObserver(() => {
+            onWindowResize();
+        });
+        resizeObserver.observe(container);
 
-    labelRenderer.domElement.addEventListener('pointerdown', onPointerDown);
-    labelRenderer.domElement.addEventListener('pointermove', onPointerMove);
-    labelRenderer.domElement.addEventListener('pointerup', onPointerUp);
-    labelRenderer.domElement.addEventListener('pointercancel', onPointerUp);
-    
-    labelRenderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault()); 
+        labelRenderer.domElement.addEventListener('pointerdown', onPointerDown);
+        labelRenderer.domElement.addEventListener('pointermove', onPointerMove);
+        labelRenderer.domElement.addEventListener('pointerup', onPointerUp);
+        labelRenderer.domElement.addEventListener('pointercancel', onPointerUp);
+        
+        labelRenderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault()); 
 
-    setupUI(); 
+        setupUI(); 
 
-    document.getElementById('loading').style.opacity = 0;
-    setTimeout(() => document.getElementById('loading').remove(), 500);
+    } catch (error) {
+        console.error("Initialization error:", error);
+        alert("App failed to initialize. Please reload.");
+    } finally {
+        // Ensure loading screen is removed regardless of success/error
+        const loading = document.getElementById('loading');
+        if(loading) {
+            loading.style.opacity = 0;
+            setTimeout(() => loading.remove(), 500);
+        }
+    }
 }
 
 // --- Core ---
@@ -500,51 +512,73 @@ function createGoals() {
     }
 }
 
-// --- Ball Texture Generation ---
-function createBallTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-    
-    // White background
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, 512, 256);
-    
-    // Draw simple black patches (Pentagon-ish circles)
-    ctx.fillStyle = '#000000';
-    const patches = [
-        {x: 128, y: 128}, {x: 384, y: 128}, // Equator
-        {x: 64, y: 64}, {x: 192, y: 64}, {x: 320, y: 64}, {x: 448, y: 64},
-        {x: 64, y: 192}, {x: 192, y: 192}, {x: 320, y: 192}, {x: 448, y: 192}
-    ];
-    
-    patches.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 35, 0, Math.PI * 2);
-        ctx.fill();
-    });
-
-    const texture = new THREE.CanvasTexture(canvas);
-    return texture;
-}
-
+// --- Real Soccer Ball Geometry ---
 function createBall(x = 0, z = 0) {
     if(ball) scene.remove(ball);
 
-    const geometry = new THREE.SphereGeometry(1.2, 32, 32); 
+    const radius = 1.2;
+    // 1. Create a base Icosahedron (detail 0) to define pentagon centers
+    // An Icosahedron has 12 vertices. In a truncated icosahedron (soccer ball),
+    // these 12 vertices correspond to the centers of the 12 pentagons.
+    const baseGeo = new THREE.IcosahedronGeometry(radius, 0);
+    const pentagonCenters = [];
+    const positionAttribute = baseGeo.getAttribute('position');
+    
+    // Extract the 12 vertex positions
+    for (let i = 0; i < positionAttribute.count; i++) {
+        const vertex = new THREE.Vector3();
+        vertex.fromBufferAttribute(positionAttribute, i);
+        pentagonCenters.push(vertex);
+    }
+
+    // 2. Create the high-res sphere mesh
+    // Detail 2 is enough for a smooth look but low enough poly for simple coloring
+    const geometry = new THREE.IcosahedronGeometry(radius, 2); 
+    
+    // 3. Prepare Vertex Colors
+    const count = geometry.attributes.position.count;
+    geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    
+    const colorAttribute = geometry.getAttribute('color');
+    const posAttribute = geometry.getAttribute('position');
+    const _vertex = new THREE.Vector3();
+
+    const black = new THREE.Color(0x111111);
+    const white = new THREE.Color(0xffffff);
+
+    // 4. Color Logic: If a vertex is close to a "Pentagon Center", color it Black.
+    // The radius is 1.2. The threshold needs to be tuned to create the right size pentagons.
+    // Distance on sphere surface is arc length, but straight line distance is easier.
+    // A threshold of approx 0.45 * radius works well for this detail level.
+    const threshold = radius * 0.45;
+
+    for (let i = 0; i < count; i++) {
+        _vertex.fromBufferAttribute(posAttribute, i);
+        
+        let isPentagon = false;
+        // Check distance to any of the 12 base vertices
+        for (let center of pentagonCenters) {
+            if (_vertex.distanceTo(center) < threshold) {
+                isPentagon = true;
+                break;
+            }
+        }
+        
+        const color = isPentagon ? black : white;
+        colorAttribute.setXYZ(i, color.r, color.g, color.b);
+    }
+
     const material = new THREE.MeshStandardMaterial({ 
-        map: createBallTexture(),
+        vertexColors: true, // IMPORTANT: Use the colors we just set
         roughness: 0.4,
         metalness: 0.1
     });
+    
     ball = new THREE.Mesh(geometry, material);
     ball.position.set(x, 1.2, z);
     ball.castShadow = true;
     ball.userData = { type: 'ball', draggable: true };
     scene.add(ball);
-    
-    // Note: Removed label for "Real Ball" look as requested
 }
 
 function createPlayer(team, id, number, x, z, name = null) {
@@ -712,16 +746,9 @@ function updateFormation(team) {
         let z = p.z;
         
         if (isHalfView) {
-            // Half Court Logic:
-            // Field range: -52.5 to 0. Center is -26.25.
-            
             if (team === 'teamA') {
-                // Map Team A (-50 to 0) to Left sub-half (-50 to -30 approx)
-                // Compress: x = -50 + (x + 50) * 0.4;
                 x = -50 + (x + 50) * 0.4; 
             } else {
-                // Map Team B (50 to 0) to Right sub-half (-2 to -22 approx)
-                // Compress & Shift: x = -2 - (50 - x) * 0.4;
                 x = -2 - (50 - x) * 0.4;
             }
         }
@@ -729,12 +756,6 @@ function updateFormation(team) {
         group.add(createPlayer(team, `${team}-${p.n}`, p.n, x, z));
     });
 }
-
-// ... (Interaction, Drawing, History, Animation, Storage, UI, Loop functions remain same)
-// Re-paste them to ensure full file integrity if needed, but for brevity here I ensure the above functions are the ones modified.
-// For the final file output, I will include the full file content.
-
-// --- Interaction ---
 
 function onPointerDown(event) {
     if (event.isPrimary === false) return;
