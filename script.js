@@ -50,7 +50,7 @@ const translations = {
         'download-pdf': 'Download PDF',
         'install-app': 'Install App',
         'init-loading': 'Initializing...',
-        'version': 'v2.2 • 3D Tactical Board',
+        'version': 'v2.4 • 3D Tactical Board',
         'player-name-default': 'Name',
         'confirm-reset': 'Are you sure you want to reset all positions?',
         'set-start-alert': 'Start position set! Now move players to "End" position and click Play.'
@@ -73,7 +73,7 @@ const translations = {
         'download-pdf': '下載 PDF',
         'install-app': '安裝 App',
         'init-loading': '初始化戰術板...',
-        'version': 'v2.2 • 3D Tactical Board',
+        'version': 'v2.4 • 3D Tactical Board',
         'player-name-default': '名字',
         'confirm-reset': '確定要重置所有位置嗎？',
         'set-start-alert': '起點已設定！現在請將球員移動到「終點」位置，然後點擊播放。'
@@ -90,8 +90,6 @@ function updateLanguage(lang) {
             el.textContent = translations[lang][key];
         }
     });
-    // Update default text for new players if necessary
-    // Note: Existing players names won't change to preserve user input
 }
 
 // --- Globals ---
@@ -101,6 +99,7 @@ let raycaster, pointer;
 
 const playersGroup = new THREE.Group();
 const linesGroup = new THREE.Group();
+const goalsGroup = new THREE.Group(); 
 let ball;
 
 // Tool State
@@ -128,10 +127,9 @@ const FIELD_WIDTH = 105;
 const FIELD_HEIGHT = 68;
 const PLAYER_RADIUS = 2.5; 
 
-// Formations adjusted: CBs deeper than WBs in 4-3-3 and 4-2-3-1
+// Formations
 const formations = {
     '4-3-3': {
-        // Adjusted: WB at x=-30, CB at x=-40 (Deeper)
         teamA: [ {n:1, x:-50, z:0}, {n:2, x:-30, z:-20}, {n:3, x:-30, z:20}, {n:4, x:-40, z:-10}, {n:5, x:-40, z:10}, {n:6, x:-15, z:0}, {n:8, x:-5, z:-15}, {n:10, x:-5, z:15}, {n:7, x:20, z:-20}, {n:11, x:20, z:20}, {n:9, x:25, z:0} ],
         teamB: [ {n:1, x:50, z:0}, {n:2, x:30, z:-20}, {n:3, x:30, z:20}, {n:4, x:40, z:-10}, {n:5, x:40, z:10}, {n:6, x:15, z:0}, {n:8, x:5, z:-15}, {n:10, x:5, z:15}, {n:7, x:-20, z:-20}, {n:11, x:-20, z:20}, {n:9, x:-25, z:0} ]
     },
@@ -140,7 +138,6 @@ const formations = {
         teamB: [ {n:1, x:50, z:0}, {n:2, x:35, z:-20}, {n:3, x:35, z:20}, {n:4, x:35, z:-7}, {n:5, x:35, z:7}, {n:7, x:10, z:-20}, {n:6, x:15, z:-7}, {n:8, x:15, z:7}, {n:11, x:10, z:20}, {n:9, x:-20, z:-7}, {n:10, x:-20, z:7} ]
     },
     '4-2-3-1': {
-        // Adjusted: WB at x=-30, CB at x=-40 (Deeper)
         teamA: [ {n:1, x:-50, z:0}, {n:2, x:-30, z:-20}, {n:3, x:-30, z:20}, {n:4, x:-40, z:-8}, {n:5, x:-40, z:8}, {n:6, x:-15, z:-8}, {n:8, x:-15, z:8}, {n:10, x:5, z:0}, {n:7, x:5, z:-20}, {n:11, x:5, z:20}, {n:9, x:25, z:0} ],
         teamB: [ {n:1, x:50, z:0}, {n:2, x:30, z:-20}, {n:3, x:30, z:20}, {n:4, x:40, z:-8}, {n:5, x:40, z:8}, {n:6, x:15, z:-8}, {n:8, x:15, z:8}, {n:10, x:-5, z:0}, {n:7, x:-5, z:-20}, {n:11, x:-5, z:20}, {n:9, x:-25, z:0} ]
     },
@@ -205,6 +202,7 @@ function init() {
 
     // 7. Field
     createField('full');
+    createGoals(); // Create Goal Posts
     
     // 8. Interaction Setup
     raycaster = new THREE.Raycaster();
@@ -219,6 +217,7 @@ function init() {
 
     scene.add(playersGroup);
     scene.add(linesGroup);
+    scene.add(goalsGroup);
 
     // 9. Initial Population & Local Storage Load
     loadData();
@@ -236,7 +235,7 @@ function init() {
     
     labelRenderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault()); 
 
-    setupUI(); // Rename old events setup to setupUI
+    setupUI(); 
 
     document.getElementById('loading').style.opacity = 0;
     setTimeout(() => document.getElementById('loading').remove(), 500);
@@ -298,6 +297,44 @@ function createFieldTexture(type) {
     ctx.strokeRect(0, penaltyY, penaltyW, penaltyH);
     ctx.strokeRect(w - penaltyW, penaltyY, penaltyW, penaltyH);
 
+    // --- Penalty Arcs (鵝眉月) & Spots ---
+    // Scale factor (pixels per meter approximation)
+    const scaleX = w / 105; 
+    
+    const penaltySpotDist = 11 * scaleX;
+    const penaltyRadius = 9.15 * scaleX;
+    const penaltyBoxWidth = penaltyW; 
+    
+    // Calculate intersection angle to ensure arc starts exactly at box edge
+    // cos(theta) = (boxWidth - spotDist) / radius
+    const arcAngle = Math.acos((penaltyBoxWidth - penaltySpotDist) / penaltyRadius);
+
+    // Left Arc
+    ctx.beginPath();
+    // Angles for arc on the right side of the spot (facing center)
+    ctx.arc(penaltySpotDist, h / 2, penaltyRadius, -arcAngle, arcAngle);
+    ctx.stroke();
+
+    // Right Arc
+    ctx.beginPath();
+    // Angles for arc on the left side of the spot (facing center)
+    ctx.arc(w - penaltySpotDist, h / 2, penaltyRadius, Math.PI - arcAngle, Math.PI + arcAngle);
+    ctx.stroke();
+
+    // Penalty Spots
+    const spotSize = lw * 1.5;
+    
+    // Left Spot
+    ctx.beginPath();
+    ctx.arc(penaltySpotDist, h / 2, spotSize, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Right Spot
+    ctx.beginPath();
+    ctx.arc(w - penaltySpotDist, h / 2, spotSize, 0, Math.PI * 2);
+    ctx.fill();
+    // ------------------------------------
+
     // Goal Areas
     const goalH = h * 0.25;
     const goalW = w * 0.05;
@@ -325,6 +362,140 @@ function createField(type) {
     fieldPlane.receiveShadow = true;
     fieldPlane.name = 'field';
     scene.add(fieldPlane);
+}
+
+// --- Goal Posts (龍門架) ---
+function createGoals() {
+    if (goalsGroup.children.length > 0) return;
+
+    const goalWidth = 7.32;
+    const goalHeight = 2.44;
+    const goalDepth = 2.0; // Depth of the goal box
+    const postRadius = 0.1;
+    const material = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.5 });
+
+    // --- Net Texture Generation ---
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(255, 255, 255, 0)'; // Transparent background
+    ctx.fillRect(0,0,64,64);
+    ctx.strokeStyle = 'rgba(220, 220, 220, 0.6)'; // Light grey net color
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0,0,64,64); // Draw grid cell
+    
+    const netTexture = new THREE.CanvasTexture(canvas);
+    netTexture.wrapS = THREE.RepeatWrapping;
+    netTexture.wrapT = THREE.RepeatWrapping;
+    
+    const netMaterial = new THREE.MeshBasicMaterial({ 
+        map: netTexture, 
+        side: THREE.DoubleSide, 
+        transparent: true,
+        depthWrite: false // Prevents transparency sorting artifacts
+    });
+
+    function buildGoal(isLeft) {
+        const goal = new THREE.Group();
+        
+        // 1. Posts (Vertical)
+        const postGeo = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 16);
+        const post1 = new THREE.Mesh(postGeo, material);
+        post1.position.set(0, goalHeight / 2, -goalWidth / 2);
+        const post2 = new THREE.Mesh(postGeo, material);
+        post2.position.set(0, goalHeight / 2, goalWidth / 2);
+        
+        // 2. Crossbar (Horizontal Top)
+        const barGeo = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth + postRadius * 2, 16);
+        const bar = new THREE.Mesh(barGeo, material);
+        bar.rotation.x = Math.PI / 2;
+        bar.position.set(0, goalHeight, 0);
+
+        // 3. Top Supports (Horizontal Backwards) - Box Shape
+        const topSupportGeo = new THREE.CylinderGeometry(postRadius * 0.5, postRadius * 0.5, goalDepth, 8);
+        const topSupport1 = new THREE.Mesh(topSupportGeo, material);
+        topSupport1.rotation.z = Math.PI / 2;
+        topSupport1.position.set(-goalDepth/2, goalHeight, -goalWidth/2);
+        
+        const topSupport2 = topSupport1.clone();
+        topSupport2.position.set(-goalDepth/2, goalHeight, goalWidth/2);
+
+        // 4. Back Top Bar
+        const backTopBarGeo = new THREE.CylinderGeometry(postRadius * 0.5, postRadius * 0.5, goalWidth, 8);
+        const backTopBar = new THREE.Mesh(backTopBarGeo, material);
+        backTopBar.rotation.x = Math.PI / 2;
+        backTopBar.position.set(-goalDepth, goalHeight, 0);
+
+        // 5. Bottom Ground Frame (Side Bottom)
+        const bottomGeo = new THREE.CylinderGeometry(postRadius * 0.5, postRadius * 0.5, goalDepth, 8);
+        const bottom1 = new THREE.Mesh(bottomGeo, material);
+        bottom1.rotation.z = Math.PI / 2;
+        bottom1.position.set(-goalDepth/2, 0, -goalWidth/2);
+        
+        const bottom2 = bottom1.clone();
+        bottom2.position.set(-goalDepth/2, 0, goalWidth/2);
+
+        // 6. Back Ground Bar (Rear Bottom)
+        const backBarGeo = new THREE.CylinderGeometry(postRadius * 0.5, postRadius * 0.5, goalWidth, 8);
+        const backBar = new THREE.Mesh(backBarGeo, material);
+        backBar.rotation.x = Math.PI / 2;
+        backBar.position.set(-goalDepth, 0, 0);
+
+        // --- Net Meshes ---
+        
+        // Back Net
+        const backNetGeo = new THREE.PlaneGeometry(goalWidth, goalHeight);
+        const backNet = new THREE.Mesh(backNetGeo, netMaterial.clone());
+        backNet.material.map = netTexture.clone();
+        backNet.material.map.repeat.set(goalWidth * 4, goalHeight * 4);
+        backNet.material.map.needsUpdate = true;
+        backNet.position.set(-goalDepth, goalHeight/2, 0);
+        backNet.rotation.y = -Math.PI / 2;
+
+        // Top Net
+        const topNetGeo = new THREE.PlaneGeometry(goalWidth, goalDepth);
+        const topNet = new THREE.Mesh(topNetGeo, netMaterial.clone());
+        topNet.material.map = netTexture.clone();
+        topNet.material.map.repeat.set(goalWidth * 4, goalDepth * 4);
+        topNet.material.map.needsUpdate = true;
+        topNet.position.set(-goalDepth/2, goalHeight, 0);
+        topNet.rotation.x = -Math.PI / 2;
+
+        // Left Side Net
+        const sideNetGeo = new THREE.PlaneGeometry(goalDepth, goalHeight);
+        const leftNet = new THREE.Mesh(sideNetGeo, netMaterial.clone());
+        leftNet.material.map = netTexture.clone();
+        leftNet.material.map.repeat.set(goalDepth * 4, goalHeight * 4);
+        leftNet.material.map.needsUpdate = true;
+        leftNet.position.set(-goalDepth/2, goalHeight/2, -goalWidth/2);
+        // Plane is XY by default. Side net is in XY plane along the depth axis.
+        // We need it to be perpendicular to Z.
+        // Default faces Z. Correct.
+        
+        // Right Side Net
+        const rightNet = leftNet.clone();
+        rightNet.material = leftNet.material.clone(); // Clone material for independent map if needed
+        rightNet.position.set(-goalDepth/2, goalHeight/2, goalWidth/2);
+
+        // Assemble Goal
+        goal.add(post1, post2, bar, topSupport1, topSupport2, backTopBar, bottom1, bottom2, backBar);
+        goal.add(backNet, topNet, leftNet, rightNet);
+        
+        // Position Goal on Field
+        const xPos = isLeft ? -FIELD_WIDTH / 2 : FIELD_WIDTH / 2;
+        goal.position.set(xPos, 0, 0);
+        
+        if (!isLeft) {
+            // Right goal needs to rotate to face the field (-X)
+            goal.rotation.y = Math.PI;
+        }
+
+        return goal;
+    }
+
+    goalsGroup.add(buildGoal(true));
+    goalsGroup.add(buildGoal(false));
 }
 
 function createBall(x = 0, z = 0) {
@@ -363,9 +534,6 @@ function createPlayer(team, id, number, x, z, name = null) {
     group.position.set(x, 0, z);
     
     // Set initial facing direction
-    // Model default faces +Z. 
-    // Team A faces Right (+X) -> Rotate Y +90deg (PI/2)
-    // Team B faces Left (-X) -> Rotate Y -90deg (-PI/2)
     if (team === 'teamA') {
         group.rotation.y = Math.PI / 2;
     } else {
