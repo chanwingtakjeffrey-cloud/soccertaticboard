@@ -54,7 +54,10 @@ const translations = {
         'version': 'v2.8 • 3D Tactical Board',
         'player-name-default': 'Name',
         'confirm-reset': 'Are you sure you want to reset all positions?',
-        'set-start-alert': 'Start position set! Now move players to "End" position and click Play.',
+        'add-frame': 'Add Frame',
+        'clear-frames': 'Clear Frames',
+        'frames-count': 'Frames: ',
+        'not-enough-frames': 'Add at least 2 frames to play animation.',
         'load-error': 'Error initializing app. Please refresh.'
     },
     'zh-TW': {
@@ -79,7 +82,10 @@ const translations = {
         'version': 'v2.8 • 3D Tactical Board',
         'player-name-default': '名字',
         'confirm-reset': '確定要重置所有位置嗎？',
-        'set-start-alert': '起點已設定！現在請將球員移動到「終點」位置，然後點擊播放。',
+        'add-frame': '加入影格',
+        'clear-frames': '清除影格',
+        'frames-count': '影格數: ',
+        'not-enough-frames': '請至少加入 2 個影格來播放動畫。',
         'load-error': '初始化失敗，請重新整理頁面。'
     }
 };
@@ -94,6 +100,11 @@ function updateLanguage(lang) {
             el.textContent = translations[lang][key];
         }
     });
+    
+    // 更新語言時一併更新影格計數器
+    if (typeof updateFrameCounter === 'function') {
+        updateFrameCounter();
+    }
 }
 
 // --- Globals ---
@@ -124,7 +135,7 @@ let historyStep = -1;
 const MAX_HISTORY = 20;
 
 // Animation System
-let animStartPositions = null;
+let keyframes = [];
 let isAnimating = false;
 
 const FIELD_WIDTH = 105;
@@ -518,13 +529,10 @@ function createBall(x = 0, z = 0) {
 
     const radius = 1.2;
     // 1. Create a base Icosahedron (detail 0) to define pentagon centers
-    // An Icosahedron has 12 vertices. In a truncated icosahedron (soccer ball),
-    // these 12 vertices correspond to the centers of the 12 pentagons.
     const baseGeo = new THREE.IcosahedronGeometry(radius, 0);
     const pentagonCenters = [];
     const positionAttribute = baseGeo.getAttribute('position');
     
-    // Extract the 12 vertex positions
     for (let i = 0; i < positionAttribute.count; i++) {
         const vertex = new THREE.Vector3();
         vertex.fromBufferAttribute(positionAttribute, i);
@@ -532,7 +540,6 @@ function createBall(x = 0, z = 0) {
     }
 
     // 2. Create the high-res sphere mesh
-    // Detail 2 is enough for a smooth look but low enough poly for simple coloring
     const geometry = new THREE.IcosahedronGeometry(radius, 2); 
     
     // 3. Prepare Vertex Colors
@@ -546,17 +553,13 @@ function createBall(x = 0, z = 0) {
     const black = new THREE.Color(0x111111);
     const white = new THREE.Color(0xffffff);
 
-    // 4. Color Logic: If a vertex is close to a "Pentagon Center", color it Black.
-    // The radius is 1.2. The threshold needs to be tuned to create the right size pentagons.
-    // Distance on sphere surface is arc length, but straight line distance is easier.
-    // A threshold of approx 0.45 * radius works well for this detail level.
+    // 4. Color Logic
     const threshold = radius * 0.45;
 
     for (let i = 0; i < count; i++) {
         _vertex.fromBufferAttribute(posAttribute, i);
         
         let isPentagon = false;
-        // Check distance to any of the 12 base vertices
         for (let center of pentagonCenters) {
             if (_vertex.distanceTo(center) < threshold) {
                 isPentagon = true;
@@ -569,7 +572,7 @@ function createBall(x = 0, z = 0) {
     }
 
     const material = new THREE.MeshStandardMaterial({ 
-        vertexColors: true, // IMPORTANT: Use the colors we just set
+        vertexColors: true, 
         roughness: 0.4,
         metalness: 0.1
     });
@@ -759,6 +762,7 @@ function updateFormation(team) {
 
 function onPointerDown(event) {
     if (event.isPrimary === false) return;
+    if (isAnimating) return; // 動畫播放時禁止所有操作
 
     const rect = labelRenderer.domElement.getBoundingClientRect();
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1020,63 +1024,92 @@ function updateHistoryButtons() {
     document.getElementById('redo-btn').disabled = historyStep >= historyStack.length - 1;
 }
 
-function setAnimStart() {
-    const positions = {};
-    playersGroup.children.forEach(p => {
-        positions[p.userData.id] = { x: p.position.x, z: p.position.z, rot: p.rotation.y };
-    });
-    positions['ball'] = { x: ball.position.x, z: ball.position.z };
-    animStartPositions = positions;
+function updateFrameCounter() {
+    const counter = document.getElementById('frame-counter');
+    const prefix = translations[currentLang]['frames-count'] || '影格數: ';
+    counter.textContent = `${prefix}${keyframes.length}`;
     
-    document.getElementById('anim-set-start').classList.add('text-green-500');
-    document.getElementById('anim-play').disabled = false;
-    
-    alert(translations[currentLang]['set-start-alert']);
+    document.getElementById('anim-play').disabled = keyframes.length < 2;
+    document.getElementById('anim-clear').disabled = keyframes.length === 0;
 }
 
-function playAnim() {
-    if (isAnimating || !animStartPositions) return;
+function addKeyframe() {
+    const frameData = { players: {}, ball: {} };
+    playersGroup.children.forEach(p => {
+        frameData.players[p.userData.id] = { x: p.position.x, z: p.position.z, rot: p.rotation.y };
+    });
+    frameData.ball = { x: ball.position.x, z: ball.position.z };
+    keyframes.push(frameData);
+    updateFrameCounter();
+    saveData(); 
+}
+
+function clearKeyframes() {
+    keyframes = [];
+    updateFrameCounter();
+    saveData();
+}
+
+function playKeyframes() {
+    if (isAnimating || keyframes.length < 2) return;
     isAnimating = true;
 
-    const endPositions = {};
+    // 將所有物件瞬間重置到第一幀的狀態
+    const firstFrame = keyframes[0];
     playersGroup.children.forEach(p => {
-        endPositions[p.userData.id] = { x: p.position.x, z: p.position.z, rot: p.rotation.y };
-    });
-    endPositions['ball'] = { x: ball.position.x, z: ball.position.z };
-
-    playersGroup.children.forEach(p => {
-        const start = animStartPositions[p.userData.id];
-        if(start) {
-            p.position.set(start.x, 0, start.z);
-            p.rotation.y = start.rot;
-            
-            const target = endPositions[p.userData.id];
-            if(target) {
-                new TWEEN.Tween(p.position)
-                    .to({ x: target.x, z: target.z }, 2000)
-                    .easing(TWEEN.Easing.Quadratic.InOut)
-                    .start();
-                
-                new TWEEN.Tween(p.rotation)
-                    .to({ y: target.rot }, 2000)
-                    .start();
-            }
+        const s = firstFrame.players[p.userData.id];
+        if(s) {
+            p.position.set(s.x, 0, s.z);
+            p.rotation.y = s.rot;
         }
     });
-
-    const bStart = animStartPositions['ball'];
-    const bEnd = endPositions['ball'];
-    if(bStart && bEnd) {
-        ball.position.set(bStart.x, 1.2, bStart.z);
-        new TWEEN.Tween(ball.position)
-            .to({ x: bEnd.x, z: bEnd.z }, 2000)
-            .easing(TWEEN.Easing.Quadratic.InOut)
-            .start();
+    if(firstFrame.ball) {
+        ball.position.set(firstFrame.ball.x, 1.2, firstFrame.ball.z);
     }
 
-    setTimeout(() => {
+    // 開始播放第一段過渡動畫
+    playTransition(0);
+}
+
+function playTransition(startIndex) {
+    // 檢查是否播放到最後一幀
+    if (startIndex >= keyframes.length - 1) {
         isAnimating = false;
-    }, 2100);
+        return;
+    }
+    
+    const startFrame = keyframes[startIndex];
+    const endFrame = keyframes[startIndex + 1];
+
+    const proxy = { t: 0 };
+    new TWEEN.Tween(proxy)
+        .to({ t: 1 }, 1500) // 每個影格轉換時間為 1.5 秒
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(() => {
+            playersGroup.children.forEach(p => {
+                const s = startFrame.players[p.userData.id];
+                const e = endFrame.players[p.userData.id];
+                if(s && e) {
+                    p.position.x = s.x + (e.x - s.x) * proxy.t;
+                    p.position.z = s.z + (e.z - s.z) * proxy.t;
+                    
+                    // 處理旋轉角度（確保以最短路徑旋轉）
+                    let diff = e.rot - s.rot;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    p.rotation.y = s.rot + diff * proxy.t;
+                }
+            });
+            if(startFrame.ball && endFrame.ball) {
+                ball.position.x = startFrame.ball.x + (endFrame.ball.x - startFrame.ball.x) * proxy.t;
+                ball.position.z = startFrame.ball.z + (endFrame.ball.z - startFrame.ball.z) * proxy.t;
+            }
+        })
+        .onComplete(() => {
+            // 自動遞迴呼叫下一幀的轉換
+            playTransition(startIndex + 1);
+        })
+        .start();
 }
 
 function saveData() {
@@ -1091,7 +1124,8 @@ function saveData() {
         language: currentLang, 
         ball: { x: ball.position.x, z: ball.position.z },
         players: [],
-        lines: []
+        lines: [],
+        keyframes: keyframes // 儲存動畫影格資料
     };
 
     playersGroup.children.forEach(group => {
@@ -1227,6 +1261,14 @@ function loadData() {
     drawingPoints = [];
     currentLine = null;
     
+    // 載入動畫影格
+    if (data.keyframes) {
+        keyframes = data.keyframes;
+    } else {
+        keyframes = [];
+    }
+    updateFrameCounter(); // 更新 UI 顯示
+
     pushHistory(); 
 }
 
@@ -1470,8 +1512,9 @@ function setupUI() {
         }
     });
 
-    document.getElementById('anim-set-start').addEventListener('click', setAnimStart);
-    document.getElementById('anim-play').addEventListener('click', playAnim);
+    document.getElementById('anim-add-frame').addEventListener('click', addKeyframe);
+    document.getElementById('anim-play').addEventListener('click', playKeyframes);
+    document.getElementById('anim-clear').addEventListener('click', clearKeyframes);
 }
 
 function onWindowResize() {
