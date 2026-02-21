@@ -201,6 +201,13 @@ body.dark-mode .icon-btn:hover { background-color: rgba(255,255,255,0.1); }
     100% { transform: scale(1); }
 }
 
+/* 動畫影格計數器 */
+#frame-counter {
+    min-width: 45px;
+    text-align: center;
+    white-space: nowrap;
+}
+
 /* Custom Color Picker Swatches */
 .color-swatch-container {
     display: flex;
