@@ -116,12 +116,16 @@
             <div class="toolbar-divider"></div>
 
             <!-- Animation Controls -->
-            <div class="flex items-center gap-1" id="anim-controls">
-                <button class="icon-btn" id="anim-set-start" title="Set Start Position">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
+            <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-1" id="anim-controls">
+                <span id="frame-counter" class="text-xs font-bold px-2 text-gray-700 dark:text-gray-300">0 幀</span>
+                <button class="icon-btn" id="anim-add-frame" title="加入影格 (Add Keyframe)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                 </button>
-                <button class="icon-btn" id="anim-play" title="Play Animation" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <button class="icon-btn" id="anim-play" title="播放動畫 (Play Animation)" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="icon-btn text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" id="anim-clear" title="清除影格 (Clear Frames)" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 </button>
             </div>
 
